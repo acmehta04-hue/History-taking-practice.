@@ -1,29 +1,68 @@
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import type { AssistLevel, CaseFile, SectionDef } from '../../content/types';
-import type { RepResult } from '../../store';
+import type { Coverage } from '../../engine/scoring';
+import { extraQuestions, type Stage } from '../../engine/stages';
+import type { EntryLine, RepResult } from '../../store';
 import { MAX_WIDTH, space, type, useTheme } from '../../theme';
 import { Card, Icon, mmss, Row, Txt } from '../ui';
-import { ReasoningPanel } from './ReasoningPanel';
+import { ExtraQuestions, extraScorable } from './ExtraQuestions';
+import { ReasoningPanel, type ReasoningOutcome } from './ReasoningPanel';
 import { buildRepResult, useElapsed } from './shared';
 
-/** A reasoning rep: read the vignette, then list differentials / investigations / management */
+/** A reasoning rep: read the vignette, list differentials / investigations / management, then (Challenge) handle a twist */
 export function ReasoningRep({
   section,
   patientCase,
   level,
+  stage,
+  isLastStep = true,
+  targetSeconds,
   header,
   onDone,
 }: {
   section: SectionDef;
   patientCase: CaseFile;
   level: AssistLevel;
+  stage: Stage;
+  isLastStep?: boolean;
+  targetSeconds: number;
   header: React.ReactNode;
   onDone: (r: RepResult) => void;
 }) {
   const t = useTheme();
   const [elapsed, finalSeconds] = useElapsed();
   const items = patientCase.reasoning[section.id] ?? [];
+  const extras = useMemo(() => extraQuestions(section, patientCase, stage, isLastStep), [section, patientCase, stage, isLastStep]);
+  const [main, setMain] = useState<ReasoningOutcome | null>(null);
+
+  const finish = (o: ReasoningOutcome, extraCovered: Record<string, Coverage> = {}, extraPicked: string[] = []) => {
+    const result = buildRepResult({
+      caseId: patientCase.id,
+      kind: 'reasoning',
+      level,
+      items: [...items.map((i) => ({ id: i.id, weight: i.weight, hasReason: !!i.reasonMatch })), ...extraScorable(extras)],
+      covered: { ...o.covered, ...extraCovered },
+      durationSec: finalSeconds(),
+      targetSeconds: targetSeconds + extras.length * 90,
+      distractors: [...o.distractors, ...extraPicked],
+      entries: o.entries as EntryLine[],
+    });
+    onDone({ ...result, sectionId: section.id });
+  };
+
+  if (main && extras.length) {
+    return (
+      <ExtraQuestions
+        extras={extras}
+        level={level}
+        seed={patientCase.id + section.id}
+        header={header}
+        onDone={(cov, picked) => finish(main, cov, picked)}
+      />
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
@@ -36,7 +75,7 @@ export function ReasoningRep({
             </Txt>
             <Row gap={4}>
               <Icon name="time-outline" size={16} color={t.inkSoft} />
-              <Txt style={[type.small, { fontVariant: ['tabular-nums'] }]} color={elapsed > section.targetSeconds ? 'warn' : 'soft'}>
+              <Txt style={[type.small, { fontVariant: ['tabular-nums'] }]} color={elapsed > targetSeconds ? 'warn' : 'soft'}>
                 {mmss(elapsed)}
               </Txt>
             </Row>
@@ -53,22 +92,8 @@ export function ReasoningRep({
           distractors={patientCase.distractors?.[section.id]}
           level={level}
           prompt={section.prompt ?? 'One item per line.'}
-          finishLabel="Finish rep"
-          onFinish={(o) =>
-            onDone(
-              buildRepResult({
-                caseId: patientCase.id,
-                kind: 'reasoning',
-                level,
-                items: items.map((i) => ({ id: i.id, weight: i.weight, hasReason: !!i.reasonMatch })),
-                covered: o.covered,
-                durationSec: finalSeconds(),
-                targetSeconds: section.targetSeconds,
-                distractors: o.distractors,
-                entries: o.entries,
-              }),
-            )
-          }
+          finishLabel={extras.length ? 'Next: the twist' : 'Finish rep'}
+          onFinish={(o) => (extras.length ? setMain(o) : finish(o))}
         />
       </View>
     </ScrollView>

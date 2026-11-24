@@ -636,11 +636,42 @@ export const lowMood: Presentation = {
       ],
     },
   ],
+  combos: [
+    {
+      id: 'combo-hx',
+      title: 'Mood history and risk',
+      short: 'HPC + Risk',
+      blurb: 'The mood history flowing straight into a risk assessment.',
+      sections: ['hpc', 'risk'],
+    },
+    {
+      id: 'combo-background',
+      title: 'Psychiatric and drug background',
+      short: 'PPH + DH',
+      blurb: 'Past episodes and treatments, then the current medicines and adherence.',
+      sections: ['pph', 'dh'],
+    },
+    {
+      id: 'combo-reasoning',
+      title: 'Clinical reasoning chain',
+      short: 'Ddx → Ix → Mx',
+      blurb: 'Commit to a differential, test it, then treat it.',
+      sections: ['ddx', 'ix', 'mx'],
+    },
+    {
+      id: 'combo-full',
+      title: 'Full station',
+      short: 'Full history',
+      blurb: 'Every block, back to back: the OSCE station.',
+      sections: ['hpc', 'risk', 'pph', 'dh', 'ddx', 'ix', 'mx'],
+    },
+  ],
   cases: [
     /* -------------------------------------------------------------- */
     {
       id: 'depression_new',
       diagnosis: 'Depressive episode (more severe) — first presentation',
+      difficulty: 1,
       patient: {
         name: 'Laura Mitchell',
         age: 32,
@@ -808,6 +839,48 @@ export const lowMood: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt:
+          'At review 10 days after starting sertraline, she says the thoughts are stronger and she has started saving up her tablets. What do you do?',
+        items: [
+          r(
+            'risk',
+            'Risk has escalated: plans and preparation (stockpiling)',
+            'redflag',
+            ['risk', 'stockpil', 'plan', 'prepar', 'escalat'],
+            'Saving tablets is preparation, not passive ideation.',
+          ),
+          r(
+            'crisis',
+            'Same-day crisis or psychiatric assessment',
+            'redflag',
+            ['crisis', 'same ?day', 'urgent', 'psychiatr', 'home treatment'],
+            'This cannot wait for a routine referral.',
+          ),
+          r(
+            'means',
+            'Remove access to means; limit prescription quantities',
+            'core',
+            ['means', 'remove', 'limit', 'smaller', 'weekly prescri'],
+            'Means restriction is one of the most effective interventions.',
+          ),
+          r('support', 'Involve her sister, with consent', 'core', ['sister', 'family', 'support'], 'Supervision and support at home.'),
+          r(
+            'activation',
+            'Review the SSRI (early activation)',
+            'extra',
+            ['activation', 'agitat', 'review (the )?(ssri|sertraline|antidepress)'],
+            'Early SSRI activation can increase suicidal thinking.',
+          ),
+          r(
+            'plan',
+            'Update the safety plan and crisis numbers',
+            'core',
+            ['safety plan', 'crisis (line|number)', 'samaritans', '111'],
+            'Written and shared.',
+          ),
+        ],
+      },
       pearl:
         'Always screen for mania before starting an antidepressant. Ask about St John’s wort and alcohol. Asking directly about suicide does not increase risk.',
     },
@@ -815,6 +888,7 @@ export const lowMood: Presentation = {
     {
       id: 'ssri_adherence',
       diagnosis: 'Depression relapse due to non-adherence (SSRI sexual side effects)',
+      difficulty: 2,
       tags: ['on-ssri'],
       patient: {
         name: 'Michael Harris',
@@ -1026,6 +1100,36 @@ export const lowMood: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt:
+          'Four weeks after switching to mirtazapine he has gained 5 kg, feels sleepy all morning, and is drinking 40 units a week. What do you do?',
+        items: [
+          r(
+            'ae',
+            'Recognise mirtazapine side effects (weight gain, sedation)',
+            'core',
+            ['weight', 'sedat', 'sleepy', 'drowsy'],
+            'Both are common with mirtazapine.',
+          ),
+          r(
+            'alcohol',
+            'Alcohol: AUDIT, brief intervention, warn about sedation with alcohol',
+            'redflag',
+            ['alcohol', 'audit', 'units'],
+            '40 units a week plus a sedating antidepressant is dangerous and worsens mood.',
+          ),
+          r('mood', 'Reassess mood and suicide risk', 'core', ['phq', 'risk', 'suicid', 'mood'], 'Has the switch worked?'),
+          r(
+            'options',
+            'Discuss timing, dose review or another switch',
+            'core',
+            ['switch', 'dose', 'timing|night', 'vortioxetine|another'],
+            'Shared decision-making again.',
+          ),
+          r('lifestyle', 'Diet and activity advice', 'extra', ['diet', 'exercise|activity', 'lifestyle'], 'Limits weight gain.'),
+          r('metabolic', 'HbA1c and lipids if weight gain continues', 'extra', ['hba1c', 'lipid', 'glucose'], 'Metabolic monitoring.'),
+        ],
+      },
       pearl:
         'Non-adherence is usually intentional and rational from the patient’s point of view. Find the reason, then fix that: side effect, belief, cost, or practicality.',
     },
@@ -1033,6 +1137,7 @@ export const lowMood: Presentation = {
     {
       id: 'bipolar',
       diagnosis: 'Bipolar affective disorder — current depressive episode',
+      difficulty: 3,
       patient: {
         name: 'Tom Adeyemi',
         age: 26,
@@ -1195,6 +1300,42 @@ export const lowMood: Presentation = {
             match: ['valproate'],
             whyNot: 'A specialist decision, with strict MHRA restrictions.',
           },
+        ],
+      },
+      twist: {
+        prompt:
+          'Three weeks after starting quetiapine he has not slept for 3 nights, speaks rapidly, and has spent £4,000 on online trading. What now?',
+        items: [
+          r(
+            'mania',
+            'Manic (or mixed) relapse',
+            'redflag',
+            ['mani', 'hypomani', 'mixed'],
+            'Reduced need for sleep, pressured speech and reckless spending.',
+          ),
+          r('urgent', 'Urgent psychiatric review or crisis team', 'core', ['urgent', 'crisis', 'psychiatr', 'home treatment'], 'Same day.'),
+          r(
+            'risk',
+            'Assess risk: finances, safety, driving, capacity',
+            'core',
+            ['risk', 'capacity', 'financ|money', 'driv'],
+            'Mania causes harm through behaviour.',
+          ),
+          r('adherence', 'Check adherence and cannabis use', 'core', ['adheren', 'cannabis', 'drug'], 'Common precipitants.'),
+          r(
+            'meds',
+            'Optimise the antipsychotic (specialist); stop any antidepressant',
+            'core',
+            ['dose', 'antipsychotic', 'quetiapine|olanzapine|haloperidol|risperidone', 'stop.*antidepress'],
+            'NICE CG185 acute mania management.',
+          ),
+          r(
+            'mha',
+            'Mental Health Act assessment if high risk and declining treatment',
+            'extra',
+            ['mental health act', 'section', '\\bmha\\b'],
+            'When capacity and risk require it.',
+          ),
         ],
       },
       pearl:

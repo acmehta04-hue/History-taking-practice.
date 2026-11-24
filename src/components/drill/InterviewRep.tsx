@@ -3,12 +3,13 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, type ScrollViewI
 
 import { checklistFor } from '../../content';
 import type { AssistLevel, CaseFile, SectionDef } from '../../content/types';
+import { extraQuestions, type Stage } from '../../engine/stages';
 import { matchQuestion, patientReply } from '../../engine/matcher';
 import type { Coverage, Method } from '../../engine/scoring';
 import type { RepResult, TranscriptLine } from '../../store';
 import { MAX_WIDTH, radius, space, type, useTheme } from '../../theme';
 import { Button, Card, Chip, Icon, mmss, Row, Txt } from '../ui';
-import { ReasoningPanel } from './ReasoningPanel';
+import { ExtraQuestions, extraScorable } from './ExtraQuestions';
 import { buildRepResult, nextToHint, tap, useElapsed } from './shared';
 
 /**
@@ -21,18 +22,24 @@ export function InterviewRep({
   section,
   patientCase,
   level,
+  stage,
+  isLastStep = true,
+  targetSeconds,
   header,
   onDone,
 }: {
   section: SectionDef;
   patientCase: CaseFile;
   level: AssistLevel;
+  stage: Stage;
+  isLastStep?: boolean;
+  targetSeconds: number;
   header: React.ReactNode;
   onDone: (r: RepResult) => void;
 }) {
   const t = useTheme();
   const items = useMemo(() => checklistFor(section, patientCase), [section, patientCase]);
-  const followUp = patientCase.followUps?.[section.id];
+  const extras = useMemo(() => extraQuestions(section, patientCase, stage, isLastStep), [section, patientCase, stage, isLastStep]);
   const [elapsed, finalSeconds] = useElapsed();
 
   const [transcript, setTranscript] = useState<TranscriptLine[]>([{ from: 'patient', text: patientCase.patient.opening }]);
@@ -41,7 +48,7 @@ export function InterviewRep({
   const [hint, setHint] = useState<string | null>(null);
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [input, setInput] = useState('');
-  const [phase, setPhase] = useState<'interview' | 'followup'>('interview');
+  const [phase, setPhase] = useState<'interview' | 'extras'>('interview');
   const scroller = useRef<ScrollViewInstance>(null);
 
   const ask = (text: string, method: Method = 'typed') => {
@@ -90,55 +97,27 @@ export function InterviewRep({
     return [...m.entries()];
   }, [items, covered]);
 
-  const finish = (extra?: { covered: Record<string, Coverage>; distractors: string[] }) => {
-    const all = [
-      ...items.map((i) => ({ id: i.id, weight: i.weight })),
-      ...(extra && followUp ? followUp.items.map((i) => ({ id: `fu:${i.id}`, weight: i.weight, hasReason: !!i.reasonMatch })) : []),
-    ];
-    const cov: Record<string, Coverage> = { ...covered };
-    if (extra) for (const [k, v] of Object.entries(extra.covered)) cov[`fu:${k}`] = v;
-    onDone(
-      buildRepResult({
-        caseId: patientCase.id,
-        kind: 'interview',
-        level,
-        items: all,
-        covered: cov,
-        durationSec: finalSeconds(),
-        targetSeconds: section.targetSeconds + (followUp ? 90 : 0),
-        unmatched,
-        distractors: extra?.distractors,
-        transcript,
-      }),
-    );
+  const finish = (extraCovered: Record<string, Coverage> = {}, distractors: string[] = []) => {
+    const all = [...items.map((i) => ({ id: i.id, weight: i.weight })), ...extraScorable(extras)];
+    const result = buildRepResult({
+      caseId: patientCase.id,
+      kind: 'interview',
+      level,
+      items: all,
+      covered: { ...covered, ...extraCovered },
+      durationSec: finalSeconds(),
+      targetSeconds: targetSeconds + extras.length * 90,
+      unmatched,
+      distractors,
+      transcript,
+    });
+    onDone({ ...result, sectionId: section.id });
   };
 
   const questionsAsked = transcript.filter((l) => l.from === 'student').length;
 
-  if (phase === 'followup' && followUp) {
-    return (
-      <ScrollView contentContainerStyle={styles.followWrap} keyboardShouldPersistTaps="handled">
-        <View style={styles.inner}>
-          {header}
-          <Card variant="hero" style={{ gap: space.sm }}>
-            <Txt style={type.tiny} color="heroSoft">
-              Think it through
-            </Txt>
-            <Txt style={type.heading} color="hero">
-              {followUp.prompt}
-            </Txt>
-          </Card>
-          <ReasoningPanel
-            seed={patientCase.id + section.id}
-            items={followUp.items}
-            level={level}
-            prompt="One option per line."
-            finishLabel="Finish rep"
-            onFinish={(o) => finish({ covered: o.covered, distractors: o.distractors })}
-          />
-        </View>
-      </ScrollView>
-    );
+  if (phase === 'extras' && extras.length) {
+    return <ExtraQuestions extras={extras} level={level} seed={patientCase.id + section.id} header={header} onDone={finish} />;
   }
 
   return (
@@ -166,7 +145,7 @@ export function InterviewRep({
               </View>
               <Row gap={4}>
                 <Icon name="time-outline" size={16} color={t.inkSoft} />
-                <Txt style={[type.small, { fontVariant: ['tabular-nums'] }]} color={elapsed > section.targetSeconds ? 'warn' : 'soft'}>
+                <Txt style={[type.small, { fontVariant: ['tabular-nums'] }]} color={elapsed > targetSeconds ? 'warn' : 'soft'}>
                   {mmss(elapsed)}
                 </Txt>
               </Row>
@@ -288,12 +267,12 @@ export function InterviewRep({
           </View>
           <Row style={{ justifyContent: 'flex-end' }}>
             <Button
-              label={followUp ? 'Done asking' : 'Finish rep'}
+              label={extras.length ? 'Done asking' : 'Finish rep'}
               variant="ghost"
               small
               icon="flag-outline"
               disabled={questionsAsked === 0}
-              onPress={() => (followUp ? setPhase('followup') : finish())}
+              onPress={() => (extras.length ? setPhase('extras') : finish())}
             />
           </Row>
         </View>

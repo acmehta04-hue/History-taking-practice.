@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, type IconName, LevelBadge, mmss, pct, Row, Screen, Stat, TopBar, Txt } from '@/components/ui';
-import { checklistFor, getCase, getSection, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
+import { checklistFor, getCase, getDrill, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
 import type { CaseFile, ChecklistItem, ReasonItem, SectionDef } from '@/content/types';
 import { relativeDue } from '@/engine/recommend';
 import type { Method } from '@/engine/scoring';
+import { extraQuestions, type Stage, STAGES, stageFor, xid } from '@/engine/stages';
 import { type RepResult, useStore } from '@/store';
 import { space, type, useTheme } from '@/theme';
 
@@ -14,11 +15,10 @@ const METHOD_ICON: Record<Method, IconName> = { typed: 'checkmark', hinted: 'bul
 
 type AnyItem = (ChecklistItem | ReasonItem) & { modelQuestion?: string };
 
-function itemsFor(section: SectionDef, c: CaseFile): AnyItem[] {
-  if (section.kind === 'reasoning') return c.reasoning[section.id] ?? [];
-  const base: AnyItem[] = checklistFor(section, c);
-  const fu = c.followUps?.[section.id];
-  return fu ? [...base, ...fu.items.map((i) => ({ ...i, id: `fu:${i.id}` }))] : base;
+function itemsFor(section: SectionDef, c: CaseFile, stage: Stage, isLast: boolean): AnyItem[] {
+  const base: AnyItem[] = section.kind === 'reasoning' ? (c.reasoning[section.id] ?? []) : checklistFor(section, c);
+  const extras = extraQuestions(section, c, stage, isLast).flatMap((q, i) => q.items.map((it) => ({ ...it, id: xid(i, it.id) })));
+  return [...base, ...extras];
 }
 
 export default function Summary() {
@@ -36,7 +36,10 @@ export default function Summary() {
   }
 
   const p = presentationById[set.presentationId];
-  const section = getSection(set.presentationId, set.sectionId)!;
+  const drill = getDrill(set.presentationId, set.sectionId)!;
+  const stage = set.stage ?? 1;
+  const nextStage = stageFor(program?.setsCompleted ?? 0);
+  const firstInterview = drill.sections.find((x) => x.kind === 'interview');
   const duration = set.reps.reduce((a, r) => a + r.durationSec, 0);
   const levelMsg =
     set.nextLevel > set.level
@@ -48,12 +51,12 @@ export default function Summary() {
 
   return (
     <Screen>
-      <TopBar title="Set complete" subtitle={`${p.title} · ${section.title}`} />
+      <TopBar title="Set complete" subtitle={`${p.title} · ${drill.title}`} />
 
       <Card variant="hero" style={{ gap: space.md }}>
         <Row style={{ justifyContent: 'space-between' }}>
           <Txt style={type.tiny} color="heroSoft">
-            {set.reps.length} reps · {mmss(duration)}
+            {STAGES[stage].name} · {set.reps.length} reps · {mmss(duration)}
           </Txt>
           <LevelBadge level={set.level} onHero />
         </Row>
@@ -70,6 +73,14 @@ export default function Summary() {
             {levelMsg}
           </Txt>
         </Row>
+        {nextStage > stage ? (
+          <Row gap={space.sm} style={{ alignItems: 'flex-start' }}>
+            <Icon name="flame-outline" size={18} color={t.accent} />
+            <Txt style={{ flex: 1 }} color="hero">
+              Next set steps up to {STAGES[nextStage].name}: {STAGES[nextStage].blurb}
+            </Txt>
+          </Row>
+        ) : null}
       </Card>
 
       <Row gap={space.md} style={{ alignItems: 'stretch' }}>
@@ -80,27 +91,27 @@ export default function Summary() {
       {/* Ideal flow */}
       <Card style={{ gap: space.sm }}>
         <Txt style={type.heading}>The ideal flow</Txt>
-        {(section.flow ?? []).map((f, i) => (
+        {drill.flow.map((f, i) => (
           <Row key={i} gap={space.sm} style={{ alignItems: 'flex-start' }}>
             <Txt style={[type.bodyStrong, { width: 20 }]} color="faint">
               {i + 1}
             </Txt>
-            <Txt style={{ flex: 1 }}>{f}</Txt>
+            <Txt style={{ flex: 1 }}>{f.replace(/^\d+\. /, '')}</Txt>
           </Row>
         ))}
       </Card>
 
-      {section.kind === 'interview' ? <Script section={section} c={scriptCase} /> : null}
+      {firstInterview ? <Script section={firstInterview} c={scriptCase} /> : null}
 
       <Txt style={type.heading}>Rep by rep</Txt>
       {set.reps.map((r, i) => (
-        <RepCard key={i} index={i} r={r} section={section} c={getCase(p.id, r.caseId)!} />
+        <RepCard key={i} index={i} r={r} sections={drill.sections} stage={stage} c={getCase(p.id, r.caseId)!} />
       ))}
 
-      {section.teach?.length ? (
+      {drill.teach.length ? (
         <>
           <Txt style={type.heading}>Teach-back</Txt>
-          {section.teach.map((id) => {
+          {drill.teach.map((id) => {
             const card = libraryById[id];
             return card ? (
               <Card key={id} onPress={() => router.push({ pathname: '/learn/[id]', params: { id } })} style={{ gap: 4 }}>
@@ -122,7 +133,7 @@ export default function Summary() {
           label="Next set now"
           icon="repeat"
           onPress={() =>
-            router.replace({ pathname: '/drill/[presentationId]/[sectionId]', params: { presentationId: p.id, sectionId: section.id } })
+            router.replace({ pathname: '/drill/[presentationId]/[sectionId]', params: { presentationId: p.id, sectionId: drill.id } })
           }
         />
         <Button label="Done for now" variant="secondary" onPress={() => router.replace('/')} />
@@ -160,14 +171,9 @@ function Script({ section, c }: { section: SectionDef; c: CaseFile }) {
   );
 }
 
-function RepCard({ r, section, c, index }: { r: RepResult; section: SectionDef; c: CaseFile; index: number }) {
-  const t = useTheme();
+function RepCard({ r, sections, stage, c, index }: { r: RepResult; sections: SectionDef[]; stage: Stage; c: CaseFile; index: number }) {
   const [open, setOpen] = useState(index === 0);
-  const items = itemsFor(section, c);
-  const byId = Object.fromEntries(items.map((i) => [i.id, i]));
-  const missed = r.missed.map((id) => byId[id]).filter(Boolean);
-  const noReason = items.filter((i) => 'reasonMatch' in i && i.reasonMatch && r.covered[i.id] && !r.covered[i.id].reason);
-  const distractorDefs = Object.values(c.distractors ?? {}).flat();
+  const steps = r.steps?.length ? r.steps : [{ ...r, sectionId: r.sectionId ?? sections[0].id }];
 
   return (
     <Card style={{ gap: space.md }}>
@@ -186,101 +192,128 @@ function RepCard({ r, section, c, index }: { r: RepResult; section: SectionDef; 
         </Row>
       </Pressable>
 
-      {open ? (
-        <>
-          {Object.keys(r.covered).length ? (
-            <View style={{ gap: 6 }}>
-              <Txt style={type.tiny} color="faint">
-                Covered — ✓ unaided · bulb after a hint · hand from a suggestion
-              </Txt>
-              <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                {Object.entries(r.covered).map(([id, cov]) =>
-                  byId[id] ? (
-                    <Chip
-                      key={id}
-                      label={byId[id].label}
-                      icon={METHOD_ICON[cov.method]}
-                      tone={cov.method === 'typed' ? 'good' : undefined}
-                    />
-                  ) : null,
-                )}
-              </Row>
-            </View>
-          ) : null}
-
-          {missed.length ? (
-            <View style={{ gap: space.sm }}>
-              <Txt style={type.tiny} color="faint">
-                Missed — {section.kind === 'interview' ? 'ask it like this' : 'model answer'}
-              </Txt>
-              {missed.map((m) => (
-                <View
-                  key={m.id}
-                  style={{ borderLeftWidth: 3, borderLeftColor: m.weight === 'redflag' ? t.bad : t.line, paddingLeft: space.md, gap: 2 }}>
+      {open
+        ? steps.map((st, i) => {
+            const section = sections.find((x) => x.id === st.sectionId) ?? sections[0];
+            return (
+              <View key={section.id} style={{ gap: space.md }}>
+                {steps.length > 1 ? (
                   <Txt style={type.bodyStrong}>
-                    {m.label}
-                    {m.weight === 'redflag' ? '  · red flag' : ''}
+                    {section.title} · {pct(st.accuracy)}
                   </Txt>
-                  {m.modelQuestion ? <Txt>“{m.modelQuestion}”</Txt> : null}
-                  <Txt style={type.small} color="soft">
-                    {m.why}
-                  </Txt>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Chip label="Nothing missed" tone="good" icon="trophy-outline" />
-          )}
+                ) : null}
+                <RepDetails r={st} section={section} c={c} stage={stage} isLast={i === steps.length - 1} />
+              </View>
+            );
+          })
+        : null}
 
-          {noReason.length ? (
-            <View style={{ gap: space.sm }}>
-              <Txt style={type.tiny} color="faint">
-                Named it — now say why
-              </Txt>
-              {noReason.map((m) => (
-                <Txt key={m.id} style={type.small}>
-                  <Txt style={type.bodyStrong}>{m.label}: </Txt>
-                  {m.why}
-                </Txt>
-              ))}
-            </View>
-          ) : null}
-
-          {r.distractors.length ? (
-            <View style={{ gap: space.sm }}>
-              <Txt style={type.tiny} color="faint">
-                Not first line
-              </Txt>
-              {r.distractors.map((d) => (
-                <Txt key={d} style={type.small}>
-                  <Txt style={type.bodyStrong}>{d}: </Txt>
-                  {distractorDefs.find((x) => x.label === d)?.whyNot}
-                </Txt>
-              ))}
-            </View>
-          ) : null}
-
-          {r.unmatched.length ? (
-            <View style={{ gap: 4 }}>
-              <Txt style={type.tiny} color="faint">
-                Not recognised (try rephrasing next time)
-              </Txt>
-              {r.unmatched.slice(0, 5).map((u, i) => (
-                <Txt key={i} style={type.small} color="soft">
-                  • {u}
-                </Txt>
-              ))}
-            </View>
-          ) : null}
-
-          <Card variant="alt" style={{ padding: space.lg }}>
-            <Row gap={space.sm} style={{ alignItems: 'flex-start' }}>
-              <Icon name="sparkles" size={18} color={t.warn} />
-              <Txt style={{ flex: 1 }}>{c.pearl}</Txt>
-            </Row>
-          </Card>
-        </>
-      ) : null}
+      {open ? <Pearl text={c.pearl} /> : null}
     </Card>
+  );
+}
+
+function Pearl({ text }: { text: string }) {
+  const t = useTheme();
+  return (
+    <Card variant="alt" style={{ padding: space.lg }}>
+      <Row gap={space.sm} style={{ alignItems: 'flex-start' }}>
+        <Icon name="sparkles" size={18} color={t.warn} />
+        <Txt style={{ flex: 1 }}>{text}</Txt>
+      </Row>
+    </Card>
+  );
+}
+
+function RepDetails({ r, section, c, stage, isLast }: { r: RepResult; section: SectionDef; c: CaseFile; stage: Stage; isLast: boolean }) {
+  const t = useTheme();
+  const items = itemsFor(section, c, stage, isLast);
+  const byId = Object.fromEntries(items.map((i) => [i.id, i]));
+  const missed = r.missed.map((id) => byId[id]).filter(Boolean);
+  const noReason = items.filter((i) => 'reasonMatch' in i && i.reasonMatch && r.covered[i.id] && !r.covered[i.id].reason);
+  const distractorDefs = Object.values(c.distractors ?? {}).flat();
+
+  return (
+    <>
+      {Object.keys(r.covered).length ? (
+        <View style={{ gap: 6 }}>
+          <Txt style={type.tiny} color="faint">
+            Covered — ✓ unaided · bulb after a hint · hand from a suggestion
+          </Txt>
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {Object.entries(r.covered).map(([id, cov]) =>
+              byId[id] ? (
+                <Chip key={id} label={byId[id].label} icon={METHOD_ICON[cov.method]} tone={cov.method === 'typed' ? 'good' : undefined} />
+              ) : null,
+            )}
+          </Row>
+        </View>
+      ) : null}
+
+      {missed.length ? (
+        <View style={{ gap: space.sm }}>
+          <Txt style={type.tiny} color="faint">
+            Missed — {section.kind === 'interview' ? 'ask it like this' : 'model answer'}
+          </Txt>
+          {missed.map((m) => (
+            <View
+              key={m.id}
+              style={{ borderLeftWidth: 3, borderLeftColor: m.weight === 'redflag' ? t.bad : t.line, paddingLeft: space.md, gap: 2 }}>
+              <Txt style={type.bodyStrong}>
+                {m.label}
+                {m.weight === 'redflag' ? '  · red flag' : ''}
+              </Txt>
+              {m.modelQuestion ? <Txt>“{m.modelQuestion}”</Txt> : null}
+              <Txt style={type.small} color="soft">
+                {m.why}
+              </Txt>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Chip label="Nothing missed" tone="good" icon="trophy-outline" />
+      )}
+
+      {noReason.length ? (
+        <View style={{ gap: space.sm }}>
+          <Txt style={type.tiny} color="faint">
+            Named it — now say why
+          </Txt>
+          {noReason.map((m) => (
+            <Txt key={m.id} style={type.small}>
+              <Txt style={type.bodyStrong}>{m.label}: </Txt>
+              {m.why}
+            </Txt>
+          ))}
+        </View>
+      ) : null}
+
+      {r.distractors.length ? (
+        <View style={{ gap: space.sm }}>
+          <Txt style={type.tiny} color="faint">
+            Not first line
+          </Txt>
+          {r.distractors.map((d) => (
+            <Txt key={d} style={type.small}>
+              <Txt style={type.bodyStrong}>{d}: </Txt>
+              {distractorDefs.find((x) => x.label === d)?.whyNot}
+            </Txt>
+          ))}
+        </View>
+      ) : null}
+
+      {r.unmatched.length ? (
+        <View style={{ gap: 4 }}>
+          <Txt style={type.tiny} color="faint">
+            Not recognised (try rephrasing next time)
+          </Txt>
+          {r.unmatched.slice(0, 5).map((u, i) => (
+            <Txt key={i} style={type.small} color="soft">
+              • {u}
+            </Txt>
+          ))}
+        </View>
+      ) : null}
+    </>
   );
 }

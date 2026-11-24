@@ -3,7 +3,8 @@ import { Alert, Platform, View } from 'react-native';
 
 import { BarList, LineChart } from '@/components/charts';
 import { Button, Card, Chip, LevelBadge, pct, Row, Screen, SectionHeader, Stat, Txt } from '@/components/ui';
-import { getSection, presentationById, presentations, programKey } from '@/content';
+import { combosFor, getDrill, presentationById, presentations, programKey, singlesFor } from '@/content';
+import { STAGES } from '@/engine/stages';
 import { relativeDue } from '@/engine/recommend';
 import { average } from '@/engine/scoring';
 import { streakDays, useStore } from '@/store';
@@ -19,6 +20,7 @@ const BLOCKS = [
   { id: 'ddx', label: 'Differentials' },
   { id: 'ix', label: 'Investigations' },
   { id: 'mx', label: 'Management' },
+  { id: 'combo', label: 'Combined drills' },
 ];
 
 export default function Progress() {
@@ -31,11 +33,11 @@ export default function Progress() {
   const line = recent.map((s, i) => ({
     y: s.points,
     label: `Set ${sets.length - recent.length + i + 1}`,
-    detail: `${presentationById[s.presentationId]?.title} · ${getSection(s.presentationId, s.sectionId)?.short} · ${pct(s.accuracy)}`,
+    detail: `${presentationById[s.presentationId]?.title} · ${getDrill(s.presentationId, s.sectionId)?.short} · ${pct(s.accuracy)}`,
   }));
 
   const bars = BLOCKS.map((b) => {
-    const mine = sets.filter((s) => s.sectionId === b.id).slice(-5);
+    const mine = sets.filter((s) => (b.id === 'combo' ? s.sectionId.startsWith('combo-') : s.sectionId === b.id)).slice(-5);
     return { label: b.label, value: average(mine.map((s) => s.accuracy)), n: mine.length };
   })
     .filter((b) => b.n > 0)
@@ -43,7 +45,7 @@ export default function Progress() {
     .map((b) => ({ label: b.label, value: b.value, sub: `${pct(b.value)} · last ${b.n}` }));
 
   const started = presentations.flatMap((p) =>
-    p.sections.map((s) => ({ p, s, prog: programs[programKey(p.id, s.id)] })).filter((x) => x.prog),
+    [...singlesFor(p), ...combosFor(p)].map((s) => ({ p, s, prog: programs[programKey(p.id, s.id)] })).filter((x) => x.prog),
   );
 
   const confirmReset = () => {
@@ -123,10 +125,10 @@ export default function Progress() {
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
                     <Txt style={type.bodyStrong}>
-                      {presentationById[s.presentationId]?.title} · {getSection(s.presentationId, s.sectionId)?.short}
+                      {presentationById[s.presentationId]?.title} · {getDrill(s.presentationId, s.sectionId)?.short}
                     </Txt>
                     <Txt style={type.small} color="soft">
-                      {new Date(s.finishedAt).toLocaleDateString()} · {pct(s.accuracy)} accuracy · L{s.level}
+                      {new Date(s.finishedAt).toLocaleDateString()} · {pct(s.accuracy)} accuracy · L{s.level} · {STAGES[s.stage ?? 1].name}
                     </Txt>
                   </View>
                   <Txt style={type.heading}>{s.points}</Txt>

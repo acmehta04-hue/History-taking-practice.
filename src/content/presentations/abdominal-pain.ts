@@ -301,11 +301,35 @@ export const abdominalPain: Presentation = {
       ],
     },
   ],
+  combos: [
+    {
+      id: 'combo-hx',
+      title: 'Presenting complaint, start to finish',
+      short: 'HPC + Systems',
+      blurb: 'SOCRATES and ICE, then the focused systems review, on one patient.',
+      sections: ['hpc', 'systems'],
+    },
+    {
+      id: 'combo-reasoning',
+      title: 'Clinical reasoning chain',
+      short: 'Ddx → Ix → Mx',
+      blurb: 'Commit to a differential, test it, then treat it.',
+      sections: ['ddx', 'ix', 'mx'],
+    },
+    {
+      id: 'combo-full',
+      title: 'Full station',
+      short: 'Full history',
+      blurb: 'Every block, back to back: the OSCE station.',
+      sections: ['hpc', 'systems', 'dh', 'ddx', 'ix', 'mx'],
+    },
+  ],
   cases: [
     /* -------------------------------------------------------------- */
     {
       id: 'appendicitis',
       diagnosis: 'Acute appendicitis',
+      difficulty: 1,
       patient: {
         name: 'Daniel Okafor',
         age: 22,
@@ -455,6 +479,48 @@ export const abdominalPain: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt: 'Two hours later he is rigid, HR 124, BP 96/58, temperature 38.9 °C. What has happened, and what do you do now?',
+        items: [
+          r(
+            'perforation',
+            'Perforated appendix with peritonitis',
+            'core',
+            ['perforat', 'peritonitis', 'ruptur'],
+            'Rigidity, tachycardia and fever after hours of appendicitis suggest perforation.',
+          ),
+          r(
+            'sepsis',
+            'Sepsis: start the Sepsis Six within 1 hour',
+            'redflag',
+            ['sepsis'],
+            'Hypotension and fever with a likely source: treat as sepsis now.',
+          ),
+          r(
+            'senior',
+            'Escalate to the surgical registrar or consultant now',
+            'core',
+            ['senior', 'registrar', 'consultant', 'escalat'],
+            'He is deteriorating; this is no longer a routine list case.',
+          ),
+          r('fluids', 'IV fluid bolus', 'core', ['bolus', 'fluid'], 'BP 96/58: give a crystalloid bolus and reassess.'),
+          r(
+            'lactate',
+            'Lactate and blood cultures',
+            'core',
+            ['lactate', 'culture', 'vbg|abg|gas'],
+            'Lactate grades severity; cultures before antibiotics where possible.',
+          ),
+          r('abx', 'Broad-spectrum IV antibiotics', 'core', ['antibiotic'], 'Within the hour, per local sepsis guidance.'),
+          r(
+            'theatre',
+            'Urgent theatre',
+            'core',
+            ['theatre', 'laparotomy', 'laparoscop', 'surgery|operat'],
+            'Source control is definitive.',
+          ),
+        ],
+      },
       pearl:
         'Migration of pain from the umbilicus to the RIF reflects visceral (midgut) pain becoming parietal peritoneal irritation. In anyone who could be pregnant, do a pregnancy test before anything else.',
     },
@@ -462,6 +528,7 @@ export const abdominalPain: Presentation = {
     {
       id: 'cholecystitis',
       diagnosis: 'Acute cholecystitis',
+      difficulty: 2,
       patient: {
         name: 'Sarah Whitfield',
         age: 45,
@@ -622,6 +689,49 @@ export const abdominalPain: Presentation = {
           { label: 'Erect chest X-ray', match: ['x ?ray', 'cxr'], whyNot: 'Useful if you suspect perforation, but not the key test here.' },
         ],
       },
+      twist: {
+        prompt:
+          'On day 2 she is jaundiced and rigoring, temperature 39.2 °C, bilirubin 68 µmol/L, and ultrasound shows a dilated common bile duct. What now?',
+        items: [
+          r(
+            'cholangitis',
+            'Ascending cholangitis (Charcot’s triad)',
+            'redflag',
+            ['cholangitis', 'charcot'],
+            'Fever, RUQ pain and jaundice: an obstructed, infected biliary tree.',
+          ),
+          r('sepsis', 'Sepsis Six', 'core', ['sepsis'], 'Rigors and fever: treat as sepsis.'),
+          r(
+            'abx',
+            'IV antibiotics (penicillin allergy!)',
+            'core',
+            ['antibiotic'],
+            'Per local guidance, choosing a penicillin-free regimen.',
+          ),
+          r(
+            'drainage',
+            'Urgent biliary drainage (ERCP)',
+            'core',
+            ['ercp', 'drain', 'decompress', 'sphincterotom'],
+            'Source control: decompress the duct.',
+          ),
+          r(
+            'escalate',
+            'Escalate: senior surgical / HPB or gastro review',
+            'core',
+            ['senior', 'escalat', 'gastro', 'hpb', 'registrar|consultant'],
+            'Cholangitis can deteriorate fast.',
+          ),
+          r('fluids', 'IV fluids and monitoring', 'extra', ['fluid', 'monitor'], 'Septic and vomiting.'),
+          r(
+            'mrcp',
+            'MRCP or EUS if the stone is not clear',
+            'extra',
+            ['mrcp', 'eus|endoscopic ultrasound'],
+            'Confirms a duct stone before intervention when the diagnosis is uncertain.',
+          ),
+        ],
+      },
       pearl:
         'Biliary colic settles within hours and has no fever. Constant pain over 24 hours with fever suggests cholecystitis. Add jaundice and you have cholangitis: Charcot’s triad of fever, RUQ pain and jaundice.',
     },
@@ -629,6 +739,7 @@ export const abdominalPain: Presentation = {
     {
       id: 'crohns',
       diagnosis: 'Crohn’s disease (new presentation)',
+      difficulty: 2,
       patient: {
         name: 'Aisha Rahman',
         age: 24,
@@ -806,6 +917,54 @@ export const abdominalPain: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt: 'Six weeks later she has 10 bloody stools a day, HR 110, temperature 38 °C, and a distended abdomen. What now?',
+        items: [
+          r(
+            'severe',
+            'Acute severe flare: admit',
+            'redflag',
+            ['admit', 'hospital', 'severe'],
+            'Systemic upset with frequent bloody stools needs inpatient care.',
+          ),
+          r(
+            'steroids',
+            'IV hydrocortisone',
+            'core',
+            ['hydrocortisone', 'iv steroid', 'methylpred'],
+            'IV steroids are first-line for a severe flare.',
+          ),
+          r(
+            'axr',
+            'Abdominal X-ray: toxic megacolon?',
+            'core',
+            ['x ?ray', '\\baxr\\b', 'megacolon', 'dilat'],
+            'Distension in a severe flare: exclude toxic dilatation.',
+          ),
+          r('stool', 'Stool culture and C. difficile', 'core', ['stool', 'c ?diff'], 'Infection can mimic or trigger a flare.'),
+          r(
+            'vte',
+            'VTE prophylaxis',
+            'core',
+            ['vte', 'heparin|enoxaparin|clexane|dalteparin', 'thrombo'],
+            'Active IBD raises clot risk, even with bleeding.',
+          ),
+          r(
+            'joint',
+            'Joint gastroenterology and surgical review',
+            'core',
+            ['gastro', 'surg'],
+            'Early surgical input if she fails to respond.',
+          ),
+          r(
+            'fluids',
+            'IV fluids and electrolytes (K+)',
+            'extra',
+            ['fluid', 'potassium|electrolyte'],
+            'Diarrhoea causes dehydration and hypokalaemia.',
+          ),
+        ],
+      },
       pearl:
         'Faecal calprotectin comes from neutrophils in the bowel wall. A normal result in a young adult with suspected IBS makes IBD unlikely (NICE DG11). Red flags — nocturnal symptoms, blood, weight loss — mean investigating, not reassuring.',
     },
@@ -813,6 +972,7 @@ export const abdominalPain: Presentation = {
     {
       id: 'ectopic',
       diagnosis: 'Ectopic pregnancy',
+      difficulty: 3,
       patient: {
         name: 'Chloe Bennett',
         age: 28,
@@ -974,6 +1134,48 @@ export const abdominalPain: Presentation = {
             match: ['discharge', 'home'],
             whyNot: 'Never with a positive pregnancy test, pain and dizziness.',
           },
+        ],
+      },
+      twist: {
+        prompt: 'Her BP falls to 82/50 with HR 130; she is pale and clammy. What has happened, and what do you do?',
+        items: [
+          r(
+            'rupture',
+            'Ruptured ectopic with haemorrhagic shock',
+            'redflag',
+            ['ruptur', 'shock', 'haemorrhag'],
+            'Hypotension and tachycardia mean intra-abdominal bleeding.',
+          ),
+          r(
+            'mhp',
+            'Activate the major haemorrhage protocol',
+            'core',
+            ['major haemorrhage', 'massive transfusion', 'o neg'],
+            'Blood products fast, without waiting for a full crossmatch.',
+          ),
+          r(
+            'access',
+            'Two large-bore cannulas, bloods, crossmatch',
+            'core',
+            ['cannula', 'large bore|wide bore', 'crossmatch'],
+            'Prepare for transfusion.',
+          ),
+          r(
+            'senior',
+            'Senior gynaecology and anaesthetic team now',
+            'core',
+            ['senior', 'consultant', 'anaesthet', 'gynae'],
+            'She needs theatre within minutes.',
+          ),
+          r(
+            'theatre',
+            'Emergency surgery (laparoscopy or laparotomy, salpingectomy)',
+            'core',
+            ['theatre', 'laparoscop', 'laparotomy', 'salpingectomy', 'surgery'],
+            'Surgery stops the bleeding.',
+          ),
+          r('blood', 'Transfuse blood; avoid large volumes of crystalloid', 'extra', ['blood|transfus'], 'Replace what she is losing.'),
+          r('antid', 'Anti-D if rhesus negative', 'extra', ['anti ?d', 'rhesus'], 'NICE NG126.'),
         ],
       },
       pearl:

@@ -8,6 +8,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 const TABS: { name: string; title: string; icon: IconName; iconActive: IconName }[] = [
   { name: 'index', title: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'topics', title: 'Drills', icon: 'albums-outline', iconActive: 'albums' },
+  { name: 'plan', title: 'Plan', icon: 'calendar-outline', iconActive: 'calendar' },
   { name: 'progress', title: 'Progress', icon: 'stats-chart-outline', iconActive: 'stats-chart' },
   { name: 'library', title: 'Learn', icon: 'book-outline', iconActive: 'book' },
 ];

@@ -6,12 +6,15 @@ History-taking practice for UK medical students. You drill **one block of a hist
 - **Set:** 3 reps of the same block with 3 different patients, followed by feedback: what you missed, how to ask it, the ideal flow, and teaching cards.
 - **Levels:** L1 Guided (suggested questions) → L2 Prompted (framework progress + hints) → L3 Independent (blank page and a clock). Score at least 80% accuracy and 80% independence to move up; under 50% accuracy moves you down.
 - **Points:** combine accuracy, independence, level, speed and red flags. See `src/engine/scoring.ts`.
+- **Stages:** the work gets harder as you go. Set 1 **Foundation** uses classic patients. Set 2 **Application** makes you commit to a diagnosis and defend it after each history. Set 3+ **Challenge** brings the hardest patients first, 25% less time, the must-not-miss diagnosis, and a twist (new information) to re-think. See `src/engine/stages.ts`.
+- **Combined drills:** once each block reaches L2, chain blocks on one patient: HPC + Systems, PPH + DH, DH + FH/SH, Ddx → Ix → Mx, then the full station.
+- **Plan:** a calendar for placements and exams. Home steers drills to your current placement and switches to exam mode 4 weeks before an exam.
 
 It runs on iPhone, Android and the web from one codebase (Expo + React Native).
 
 > Educational tool for medical students, not clinical advice. Content must be checked by a clinician before release — see `docs/CONTENT_GUIDE.md`.
 
-## What's in v0.1
+## What's in v0.2
 
 | Presentation | Patients | Drills |
 | --- | --- | --- |
@@ -62,6 +65,7 @@ src/
   app/                    Screens (Expo Router: each file is a route)
     (tabs)/index.tsx      Home dashboard
     (tabs)/topics.tsx     Drill picker
+    (tabs)/plan.tsx       Calendar: placements and exams
     (tabs)/progress.tsx   Progress and charts
     (tabs)/library.tsx    Teaching cards
     presentation/[id]     One presentation and its drills
@@ -73,7 +77,7 @@ src/
     common.ts             Reusable checklist items (SOCRATES, drug history…)
     presentations/*.ts    One file per presentation
     library.ts            Teaching cards
-  engine/                 Matching, scoring, progression (no UI, unit-tested)
+  engine/                 Matching, scoring, levels, stages, calendar, recommendations (no UI, unit-tested)
   store/                  Saved progress (on-device, AsyncStorage)
   theme/                  Colours and type — change the look here
 tests/engine.test.ts      Engine and content tests
@@ -87,4 +91,4 @@ docs/                     Content guide and roadmap
 
 ## How the "patient" works today
 
-Version 0.1 runs offline. Each checklist item has keyword patterns (`src/content/*`). A question covers an item if any pattern matches, and the patient replies with that case's scripted answer. This is fast, free and predictable, but students sometimes have to rephrase. Phase 2 adds an AI classifier and an AI patient behind the same functions (`src/engine/matcher.ts`). See `docs/ROADMAP.md`.
+The app runs offline. Each checklist item has keyword patterns (`src/content/*`). A question covers an item if any pattern matches, and the patient replies with that case's scripted answer. This is fast, free and predictable, but students sometimes have to rephrase. Phase 2 adds an AI classifier and an AI patient behind the same functions (`src/engine/matcher.ts`). See `docs/ROADMAP.md`.

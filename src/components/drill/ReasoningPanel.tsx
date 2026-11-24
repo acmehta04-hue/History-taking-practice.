@@ -29,6 +29,7 @@ export function ReasoningPanel({
   prompt,
   finishLabel,
   onFinish,
+  placeholder,
 }: {
   seed: string;
   items: ReasonItem[];
@@ -37,6 +38,7 @@ export function ReasoningPanel({
   prompt: string;
   finishLabel: string;
   onFinish: (o: ReasoningOutcome) => void;
+  placeholder?: string;
 }) {
   const t = useTheme();
   const [input, setInput] = useState('');
@@ -170,7 +172,7 @@ export function ReasoningPanel({
           value={input}
           onChangeText={setInput}
           onSubmitEditing={submit}
-          placeholder={chosen ? 'Why? e.g. likely theatre' : 'e.g. FBC — anaemia from blood loss'}
+          placeholder={chosen ? 'Why? e.g. likely theatre' : (placeholder ?? 'e.g. FBC — anaemia from blood loss')}
           placeholderTextColor={t.inkFaint}
           returnKeyType="send"
           submitBehavior="submit"

@@ -470,11 +470,42 @@ export const palpitations: Presentation = {
       ],
     },
   ],
+  combos: [
+    {
+      id: 'combo-hx',
+      title: 'Presenting complaint, start to finish',
+      short: 'HPC + Systems',
+      blurb: 'Characterise the palpitations, then screen thyroid and cardiac systems.',
+      sections: ['hpc', 'systems'],
+    },
+    {
+      id: 'combo-background',
+      title: 'Background history',
+      short: 'DH + FH/SH',
+      blurb: 'Medicines, monitoring, family and lifestyle in one pass.',
+      sections: ['dh', 'fhsh'],
+    },
+    {
+      id: 'combo-reasoning',
+      title: 'Clinical reasoning chain',
+      short: 'Ddx → Ix → Mx',
+      blurb: 'Commit to a differential, test it, then treat it.',
+      sections: ['ddx', 'ix', 'mx'],
+    },
+    {
+      id: 'combo-full',
+      title: 'Full station',
+      short: 'Full history',
+      blurb: 'Every block, back to back: the OSCE station.',
+      sections: ['hpc', 'systems', 'dh', 'fhsh', 'ddx', 'ix', 'mx'],
+    },
+  ],
   cases: [
     /* -------------------------------------------------------------- */
     {
       id: 'graves',
       diagnosis: 'Graves’ disease (thyrotoxicosis)',
+      difficulty: 1,
       patient: {
         name: 'Hannah Kowalski',
         age: 34,
@@ -643,6 +674,29 @@ export const palpitations: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt: 'Two weeks into carbimazole she rings with a sore throat and a temperature of 38.5 °C. What do you do?',
+        items: [
+          r('agran', 'Suspect agranulocytosis', 'redflag', ['agranulocyt', 'neutropen'], 'The must-know carbimazole emergency.'),
+          r('stop', 'Stop carbimazole now', 'core', ['stop'], 'Until neutropenia is excluded.'),
+          r('fbc', 'Urgent FBC (neutrophil count)', 'core', ['fbc', 'neutrophil', 'blood count'], 'Same day.'),
+          r(
+            'sepsis',
+            'Admit if neutropenic: neutropenic sepsis pathway, IV antibiotics',
+            'core',
+            ['neutropenic sepsis', 'admit', 'antibiotic'],
+            'Neutropenic sepsis is life-threatening.',
+          ),
+          r('endo', 'Inform endocrinology', 'core', ['endocrin'], 'They will plan the alternative.'),
+          r(
+            'alt',
+            'Do not restart; plan definitive treatment (RAI or surgery)',
+            'extra',
+            ['radio ?iodine|radioactive|\\brai\\b', 'thyroidectomy|surgery', 'do not restart|not restart|never restart'],
+            'Antithyroid drugs are usually avoided after agranulocytosis.',
+          ),
+        ],
+      },
       pearl:
         'Thyroid eye disease, pretibial myxoedema and acropachy are specific to Graves’. Carbimazole’s must-say safety-net: sore throat or fever means stop the drug and get an urgent FBC.',
     },
@@ -650,6 +704,7 @@ export const palpitations: Presentation = {
     {
       id: 'af_amiodarone',
       diagnosis: 'Paroxysmal AF worsened by amiodarone-induced thyrotoxicosis',
+      difficulty: 3,
       patient: {
         name: 'Graham Price',
         age: 68,
@@ -833,6 +888,54 @@ export const palpitations: Presentation = {
           },
         ],
       },
+      twist: {
+        prompt:
+          'TFTs: TSH under 0.01, free T4 48 pmol/L. He now also has a dry cough, worsening breathlessness and fine crackles at both bases. What now?',
+        items: [
+          r(
+            'ait',
+            'Amiodarone-induced thyrotoxicosis confirmed',
+            'core',
+            ['thyrotox', 'hyperthyroid', '\\bait\\b'],
+            'Suppressed TSH with raised free T4 on amiodarone.',
+          ),
+          r(
+            'lung',
+            'Amiodarone pulmonary toxicity',
+            'redflag',
+            ['pulmonary tox', 'pneumonitis', 'fibros', 'lung'],
+            'New cough, breathlessness and crackles on amiodarone: pneumonitis or fibrosis until proven otherwise.',
+          ),
+          r(
+            'hf',
+            'Also consider heart failure',
+            'core',
+            ['heart failure', '\\bhf\\b', 'pulmonary oedema', 'bnp'],
+            'Fast AF can tip him into heart failure; check BNP and echo.',
+          ),
+          r(
+            'imaging',
+            'CXR, then HRCT and lung function',
+            'core',
+            ['cxr|chest x ?ray', 'hrct|ct chest', 'lung function|pft|spirom|dlco|transfer factor'],
+            'Characterise the lung disease.',
+          ),
+          r(
+            'cardio',
+            'Urgent cardiology review about stopping amiodarone',
+            'core',
+            ['cardiolog'],
+            'Two serious toxicities: a specialist decides on alternatives.',
+          ),
+          r(
+            'endo',
+            'Endocrinology for the thyrotoxicosis',
+            'extra',
+            ['endocrin'],
+            'Type 1 or 2 amiodarone-induced thyrotoxicosis needs different treatment.',
+          ),
+        ],
+      },
       pearl:
         'Amiodarone is about 37% iodine by weight. It can cause hypo- or hyperthyroidism, so TFTs (and LFTs) are checked at baseline and every 6 months. When a patient on amiodarone deteriorates, check whether the monitoring has lapsed.',
     },
@@ -840,6 +943,7 @@ export const palpitations: Presentation = {
     {
       id: 'svt',
       diagnosis: 'Supraventricular tachycardia (likely AVNRT)',
+      difficulty: 2,
       patient: {
         name: 'Megan Lewis',
         age: 26,
@@ -997,6 +1101,42 @@ export const palpitations: Presentation = {
             match: ['^adenosine$', 'give adenosine', 'adenosine \\d+ ?mg'],
             whyNot: 'She has asthma, and the BNF lists asthma as a contraindication to adenosine. Use verapamil.',
           },
+        ],
+      },
+      twist: {
+        prompt:
+          'During the consultation an episode starts: HR 190, regular, narrow-complex; BP 118/76; no chest pain. What do you do, in order?',
+        items: [
+          r(
+            'adverse',
+            'Check for adverse features (shock, syncope, ischaemia, heart failure)',
+            'core',
+            ['adverse', 'shock', 'syncope', 'ischaem', 'unstable|stable'],
+            'Decides between drugs and cardioversion.',
+          ),
+          r(
+            'ecg',
+            'Continuous monitoring and a 12-lead ECG during the episode',
+            'core',
+            ['ecg', 'monitor'],
+            'Capturing the rhythm is gold for the cardiologist.',
+          ),
+          r('vagal', 'Vagal manoeuvres first (modified Valsalva)', 'core', ['vagal', 'valsalva'], 'Stable SVT: start here.'),
+          r(
+            'verapamil',
+            'Avoid adenosine (asthma): IV verapamil',
+            'redflag',
+            ['verapamil', 'avoid adenosine', 'adenosine.*(asthma|contraindicat|avoid)'],
+            'BNF: adenosine is contraindicated in asthma.',
+          ),
+          r(
+            'dccv',
+            'Synchronised DC cardioversion if adverse features',
+            'core',
+            ['cardiover', 'dc shock', 'dccv'],
+            'Unstable tachyarrhythmia.',
+          ),
+          r('access', 'IV access', 'extra', ['cannula', 'iv access'], 'Needed for drugs.'),
         ],
       },
       pearl:

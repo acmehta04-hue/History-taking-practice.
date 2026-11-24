@@ -8,7 +8,11 @@ import { lowMood } from '../src/content/presentations/low-mood';
 import { palpitations } from '../src/content/presentations/palpitations';
 import type { ChecklistItem, Presentation } from '../src/content/types';
 import { matchEntry, matchQuestion, normalise, patientReply, splitEntry } from '../src/engine/matcher';
+import { activePlacement, type CalendarEvent, daysBetween, monthGrid, nextExam } from '../src/engine/calendar';
 import { nextLevel, pickCases } from '../src/engine/progression';
+import { comboReadiness, nextUp } from '../src/engine/recommend';
+import { extraQuestions, pickCasesForStage, stageFor, synthesisQuestion } from '../src/engine/stages';
+import { getDrill } from '../src/content';
 import { scoreRep } from '../src/engine/scoring';
 
 const ALL: Presentation[] = [abdominalPain, palpitations, lowMood];
@@ -206,6 +210,19 @@ describe('content integrity', () => {
             for (const d of c.distractors?.[sec] ?? [])
               assert.ok(matchEntry(d.label, list, c.distractors?.[sec]).distractor, `${c.id}/${sec}: distractor "${d.label}" not detected`);
           }
+          if (c.twist)
+            for (const i of c.twist.items)
+              assert.ok(
+                matchEntry(i.label, c.twist.items).items.some((x) => x.id === i.id),
+                `${c.id} twist "${i.label}"`,
+              );
+          const syn = synthesisQuestion(c, 3);
+          if (syn)
+            for (const i of syn.items)
+              assert.ok(
+                matchEntry(i.label, syn.items).items.some((x) => x.id === i.id),
+                `${c.id} synthesis "${i.label}"`,
+              );
           for (const [sec, fu] of Object.entries(c.followUps ?? {}))
             for (const i of fu.items)
               assert.ok(
@@ -222,6 +239,20 @@ describe('content integrity', () => {
       it('every case has a model answer for every reasoning section', () => {
         for (const s of p.sections.filter((x) => x.kind === 'reasoning'))
           for (const c of p.cases) assert.ok((c.reasoning[s.id] ?? []).length >= 3, `${c.id} missing ${s.id}`);
+      });
+
+      it('combined drills point at real blocks', () => {
+        for (const c of p.combos) {
+          const d = getDrill(p.id, c.id);
+          assert.ok(d && d.sections.length === c.sections.length && d.sections.length >= 2, `${c.id} has a missing block`);
+        }
+      });
+
+      it('every patient has a difficulty and a Challenge twist', () => {
+        for (const c of p.cases) {
+          assert.ok([1, 2, 3].includes(c.difficulty), `${c.id} difficulty`);
+          assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
+        }
       });
 
       it('teaching links exist', () => {
@@ -241,4 +272,73 @@ describe('content integrity', () => {
       });
     });
   }
+});
+
+describe('stages (sets get harder)', () => {
+  it('rises with sets completed and stays at Challenge', () => {
+    assert.deepEqual([0, 1, 2, 3, 7].map(stageFor), [1, 2, 3, 3, 3]);
+  });
+  it('picks easier patients first and the hardest at Challenge', () => {
+    const easy = pickCasesForStage(abdominalPain, 1, 0).map((c) => c.difficulty);
+    const hard = pickCasesForStage(abdominalPain, 3, 2).map((c) => c.difficulty);
+    assert.equal(hard[0], 3);
+    assert.ok(easy.reduce((a, b) => a + b, 0) < hard.reduce((a, b) => a + b, 0));
+    assert.ok(!pickCasesForStage(abdominalPain, 1, 0).some((c) => c.id === 'ectopic'));
+  });
+  it('adds commit-and-defend from Application, and must-not-miss at Challenge', () => {
+    const hpc = section(abdominalPain, 'hpc');
+    const c = caseOf(abdominalPain, 'cholecystitis');
+    assert.equal(extraQuestions(hpc, c, 1).length, 0);
+    assert.equal(extraQuestions(hpc, c, 2)[0].items.length, 1);
+    assert.ok(extraQuestions(hpc, c, 3)[0].items.some((i) => i.label.startsWith('Must not miss')));
+  });
+  it('adds the twist only to reasoning blocks at Challenge, and only after the last block of a combo', () => {
+    const mx = section(abdominalPain, 'mx');
+    const c = caseOf(abdominalPain, 'appendicitis');
+    assert.equal(extraQuestions(mx, c, 2).length, 0);
+    assert.match(extraQuestions(mx, c, 3)[0].prompt, /^Twist/);
+    assert.equal(extraQuestions(mx, c, 3, false).length, 0);
+  });
+  it('credits a committed diagnosis with its reason', () => {
+    const syn = synthesisQuestion(caseOf(abdominalPain, 'appendicitis'), 2)!;
+    const m = matchEntry('Appendicitis — pain migrated to the RIF with anorexia', syn.items);
+    assert.equal(m.reasonHits.lead, true);
+  });
+});
+
+describe('combined drills', () => {
+  it('unlock when every block reaches L2', () => {
+    const d = getDrill('low-mood', 'combo-background')!;
+    const p = lowMood;
+    assert.equal(comboReadiness(p, d, {}).ready, false);
+    const lvl2 = { level: 2 as const, setsCompleted: 2, bestAccuracy: 0.8, masteredStreak: 0 };
+    assert.equal(comboReadiness(p, d, { 'low-mood:pph': lvl2, 'low-mood:dh': lvl2 }).ready, true);
+  });
+});
+
+describe('calendar', () => {
+  const events: CalendarEvent[] = [
+    { id: 'a', kind: 'placement', title: 'Psychiatry', specialtyId: 'psych', start: '2026-11-02', end: '2026-12-11' },
+    { id: 'b', kind: 'exam', title: 'OSCE', start: '2026-12-14', end: '2026-12-14' },
+  ];
+  it('finds the current placement and next exam', () => {
+    assert.equal(activePlacement(events, '2026-11-24')?.title, 'Psychiatry');
+    assert.equal(nextExam(events, '2026-11-24')?.title, 'OSCE');
+    assert.equal(daysBetween('2026-11-24', '2026-12-14'), 20);
+  });
+  it('builds a Monday-first 6-week grid', () => {
+    const g = monthGrid(2026, 10); // November 2026 starts on a Sunday
+    assert.equal(g.length, 42);
+    assert.equal(g[0].key, '2026-10-26');
+    assert.equal(g.find((d) => d.inMonth)?.key, '2026-11-01');
+  });
+  it('steers suggestions to the placement specialty', () => {
+    const pick = nextUp({}, [{ ...events[0] }], new Date(2026, 10, 24).getTime());
+    assert.equal(pick.presentation.specialtyId, 'psych');
+  });
+  it('switches to exam mode when an exam is close', () => {
+    const due = { level: 2 as const, setsCompleted: 1, bestAccuracy: 0.7, masteredStreak: 0, nextDueAt: 0 };
+    const pick = nextUp({ 'palpitations:hpc': due }, events, new Date(2026, 10, 24).getTime());
+    assert.match(pick.reason ?? '', /OSCE soon/);
+  });
 });

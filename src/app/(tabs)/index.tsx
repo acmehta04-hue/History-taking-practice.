@@ -3,9 +3,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, LevelBadge, pct, Ring, Row, Screen, SectionHeader, Stat, Txt } from '@/components/ui';
 import { library, presentationsFor, programKey, specialties } from '@/content';
+import { activePlacement, daysBetween, dayKey, nextExam, parseDay } from '@/engine/calendar';
 import { SETS_PER_BLOCK } from '@/engine/progression';
 import { dueNow, nextUp, relativeDue, specialtyMastery } from '@/engine/recommend';
 import { average } from '@/engine/scoring';
+import { STAGES, stageFor } from '@/engine/stages';
 import { setsSince, streakDays, useStore } from '@/store';
 import { space, type, useTheme } from '@/theme';
 
@@ -20,8 +22,13 @@ export default function Home() {
   const t = useTheme();
   const sets = useStore((s) => s.sets);
   const programs = useStore((s) => s.programs);
+  const events = useStore((s) => s.events);
 
-  const pick = nextUp(programs);
+  const pick = nextUp(programs, events);
+  const today = dayKey(new Date());
+  const placement = activePlacement(events, today);
+  const exam = nextExam(events, today);
+  const examIn = exam ? daysBetween(today, exam.start) : undefined;
   const due = dueNow(programs);
   const week = setsSince(sets, WEEK);
   const streak = streakDays(sets);
@@ -50,11 +57,32 @@ export default function Home() {
         </View>
       </Row>
 
+      {/* Calendar context */}
+      {placement || exam ? (
+        <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
+          {placement ? (
+            <Chip
+              icon="medkit-outline"
+              label={`On ${placement.title} until ${parseDay(placement.end).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}
+              onPress={() => router.push('/plan')}
+            />
+          ) : null}
+          {exam && examIn !== undefined ? (
+            <Chip
+              icon="calendar-outline"
+              tone={examIn <= 28 ? 'warn' : undefined}
+              label={examIn === 0 ? `${exam.title} today` : `${exam.title} in ${examIn} day${examIn === 1 ? '' : 's'}`}
+              onPress={() => router.push('/plan')}
+            />
+          ) : null}
+        </Row>
+      ) : null}
+
       {/* Hero: next set */}
       <Card variant="hero" style={{ gap: space.lg }}>
         <Row style={{ justifyContent: 'space-between' }}>
           <Txt style={type.tiny} color="heroSoft">
-            {pick.due ? 'Due today' : prog ? 'Continue' : 'Start here'}
+            {pick.reason ?? (pick.due ? 'Due today' : prog ? 'Continue' : 'Start here')}
           </Txt>
           <LevelBadge level={prog?.level ?? 1} onHero />
         </Row>
@@ -63,7 +91,7 @@ export default function Home() {
             {pick.presentation.title}
           </Txt>
           <Txt style={type.bodyStrong} color="heroSoft">
-            {pick.section.title}
+            {pick.drill.title}
           </Txt>
         </View>
         <Row gap={6}>
@@ -77,10 +105,10 @@ export default function Home() {
             />
           ))}
           <Txt style={[type.small, { marginLeft: 6 }]} color="heroSoft">
-            Set {setNo} · 3 reps · ~{Math.round((pick.section.targetSeconds * 3) / 60)} min
+            Set {setNo} · {STAGES[stageFor(prog?.setsCompleted ?? 0)].name} · ~{Math.round((pick.drill.targetSeconds * 3) / 60)} min
           </Txt>
         </Row>
-        <Button label="Start set" icon="arrow-forward" variant="accent" onPress={() => start(pick.presentation.id, pick.section.id)} />
+        <Button label="Start set" icon="arrow-forward" variant="accent" onPress={() => start(pick.presentation.id, pick.drill.id)} />
       </Card>
 
       {/* Stats */}
@@ -96,13 +124,13 @@ export default function Home() {
           <View style={{ gap: space.sm }}>
             {due.slice(1, 4).map((d) => (
               <Card
-                key={programKey(d.presentation.id, d.section.id)}
-                onPress={() => start(d.presentation.id, d.section.id)}
+                key={programKey(d.presentation.id, d.drill.id)}
+                onPress={() => start(d.presentation.id, d.drill.id)}
                 style={{ padding: space.lg }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
                     <Txt style={type.bodyStrong}>
-                      {d.presentation.title} · {d.section.short}
+                      {d.presentation.title} · {d.drill.short}
                     </Txt>
                     <Txt style={type.small} color="soft">
                       {relativeDue(d.program?.nextDueAt)}
@@ -138,7 +166,12 @@ export default function Home() {
                     <Icon name={s.icon as never} size={20} color={tone.ink} />
                   </View>
                   {live ? (
-                    <Ring value={m} size={40} stroke={5} color={tone.strong} track={t.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}>
+                    <Ring
+                      value={m}
+                      size={40}
+                      stroke={5}
+                      color={tone.strong}
+                      track={t.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}>
                       <Txt style={[type.small, { fontSize: 10, fontWeight: '800' }]} color={tone.ink}>
                         {Math.round(m * 100)}
                       </Txt>

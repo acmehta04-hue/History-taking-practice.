@@ -13,6 +13,10 @@ Specialty → Presentation (UKMLA presentation, e.g. "Palpitations")
 - **Interview sections** (HPC, systems, DH, risk…) have one shared `checklist` per presentation. Each case fills in `answers[itemId]` with what that patient says. Items it leaves out fall back to `defaultAnswer` (usually a negative).
 - **Reasoning sections** (`ddx`, `ix`, `mx`) have a model answer per case in `reasoning[sectionId]`. `distractors[sectionId]` adds plausible-but-wrong options for Guided mode.
 - **Follow-ups** (`followUps[sectionId]`) add a reasoning question at the end of an interview rep. Example: "What adherence options would you discuss?"
+- **Difficulty** (`difficulty: 1 | 2 | 3`) decides when a patient appears. Foundation sets use the easiest patients, Challenge sets start with the hardest. Give each presentation a spread.
+- **Twist** (`twist`) is the Challenge-set question after reasoning reps: new information that changes the picture ("Her BP falls to 82/50…"). Write 5–7 model points; make at least one a red flag.
+- **Combined drills** (`combos` on the presentation) chain blocks on one patient. List the section ids in the order a real history would run them.
+- The **commit-and-defend** question (Application and Challenge sets) is generated automatically from the first two `ddx` items, so put the leading diagnosis first and give it a good `reasonMatch`.
 
 ## Weights
 
@@ -34,7 +38,7 @@ Patterns are case-insensitive regular expressions, matched against a normalised 
 ## Adding a case
 
 1. Copy an existing case in the presentation file.
-2. Write `summary` (shown in reasoning reps), `answers`, `reasoning` for every reasoning section, and a `pearl`.
+2. Write `summary` (shown in reasoning reps), `answers`, `reasoning` for every reasoning section, a `difficulty`, a `twist` and a `pearl`.
 3. Run `npm test` and fix anything it flags.
 4. Get it clinically reviewed (below).
 

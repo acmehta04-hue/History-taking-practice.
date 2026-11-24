@@ -96,6 +96,8 @@ export interface Patient {
 export interface FollowUp {
   prompt: string;
   items: ReasonItem[];
+  /** No option chips even in Guided mode (e.g. "commit to a diagnosis") */
+  freeText?: boolean;
 }
 
 export interface CaseFile {
@@ -117,6 +119,20 @@ export interface CaseFile {
   pearl: string;
   /** Free-form flags used by ChecklistItem.appliesTo, e.g. "on-ssri" */
   tags?: string[];
+  /** 1 = classic textbook, 2 = some ambiguity, 3 = atypical / high-stakes. Harder patients come in later sets. */
+  difficulty: 1 | 2 | 3;
+  /** Challenge-set twist: new information that forces a re-think (asked after reasoning reps in set 3+) */
+  twist?: FollowUp;
+}
+
+/** A combined drill: several blocks run back-to-back on the same patient */
+export interface ComboDef {
+  id: string;
+  title: string;
+  short: string;
+  blurb: string;
+  /** Section ids, in the order they are run */
+  sections: string[];
 }
 
 export interface Presentation {
@@ -126,6 +142,8 @@ export interface Presentation {
   /** UKMLA content map areas this presentation draws on */
   ukmla: string[];
   sections: SectionDef[];
+  /** Combined drills, unlocked once their blocks reach L2 */
+  combos: ComboDef[];
   cases: CaseFile[];
 }
 

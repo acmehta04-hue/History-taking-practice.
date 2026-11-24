@@ -4,7 +4,9 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { programKey } from '../content';
 import type { AssistLevel, SectionKind } from '../content/types';
+import type { CalendarEvent } from '../engine/calendar';
 import { isMastered, nextDueAt, nextLevel } from '../engine/progression';
+import type { Stage } from '../engine/stages';
 import { average, type Coverage } from '../engine/scoring';
 
 export interface TranscriptLine {
@@ -21,6 +23,10 @@ export interface EntryLine {
 
 export interface RepResult {
   caseId: string;
+  /** Which block this result is for (combined drills store one per step) */
+  sectionId?: string;
+  /** Combined drills: one result per block, in order */
+  steps?: RepResult[];
   kind: SectionKind;
   level: AssistLevel;
   accuracy: number;
@@ -44,6 +50,7 @@ export interface SetResult {
   sectionId: string;
   level: AssistLevel;
   nextLevel: AssistLevel;
+  stage: Stage;
   startedAt: number;
   finishedAt: number;
   reps: RepResult[];
@@ -65,6 +72,9 @@ export interface ProgramState {
 interface AppState {
   sets: SetResult[];
   programs: Record<string, ProgramState>;
+  events: CalendarEvent[];
+  addEvent: (e: Omit<CalendarEvent, 'id'>) => void;
+  removeEvent: (id: string) => void;
   completeSet: (s: Omit<SetResult, 'id' | 'nextLevel' | 'points' | 'accuracy' | 'independence'>) => SetResult;
   resetAll: () => void;
 }
@@ -76,6 +86,10 @@ export const useStore = create<AppState>()(
     (set, get) => ({
       sets: [],
       programs: {},
+      events: [],
+      addEvent: (e) =>
+        set({ events: [...get().events, { ...e, id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}` }] }),
+      removeEvent: (id) => set({ events: get().events.filter((e) => e.id !== id) }),
       completeSet: (s) => {
         const key = programKey(s.presentationId, s.sectionId);
         const prev = get().programs[key] ?? defaultProgram;
@@ -114,7 +128,16 @@ export const useStore = create<AppState>()(
     {
       name: 'history-drills-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
+      // v1 → v2: sets gained a challenge stage; calendar events added
+      migrate: (persisted, version) => {
+        const st = (persisted ?? {}) as Partial<AppState>;
+        if (version < 2) {
+          st.sets = (st.sets ?? []).map((x) => ({ ...x, stage: (x as SetResult).stage ?? 1 }));
+          st.events = st.events ?? [];
+        }
+        return st as AppState;
+      },
     },
   ),
 );
