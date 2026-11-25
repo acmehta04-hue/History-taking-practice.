@@ -5,6 +5,7 @@ import type { Stage } from '../../engine/stages';
 import type { RepResult } from '../../store';
 import { InterviewRep } from './InterviewRep';
 import { ReasoningRep } from './ReasoningRep';
+import { VivaRep } from './VivaRep';
 
 /** Merge the results of each block in a combined drill into one rep */
 export function mergeSteps(steps: RepResult[]): RepResult {
@@ -13,7 +14,7 @@ export function mergeSteps(steps: RepResult[]): RepResult {
   const wavg = (f: (r: RepResult) => number) => steps.reduce((a, r) => a + f(r) * size(r), 0) / total;
   return {
     caseId: steps[0].caseId,
-    kind: steps.some((s) => s.kind === 'interview') ? 'interview' : 'reasoning',
+    kind: steps[0].kind,
     level: steps[0].level,
     accuracy: wavg((r) => r.accuracy),
     independence: wavg((r) => r.independence),
@@ -75,5 +76,7 @@ export function StepRep({
     header: header(label),
     onDone: next,
   };
-  return section.kind === 'interview' ? <InterviewRep key={k} {...common} /> : <ReasoningRep key={k} {...common} />;
+  if (section.kind === 'viva') return <VivaRep key={k} {...common} />;
+  if (section.kind === 'reasoning') return <ReasoningRep key={k} {...common} />;
+  return <InterviewRep key={k} {...common} />;
 }

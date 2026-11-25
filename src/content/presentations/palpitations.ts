@@ -1,4 +1,5 @@
 import {
+  VIVA_FLOW,
   alcohol,
   dhAdherence,
   dhAllergies,
@@ -16,6 +17,7 @@ import {
   smoking,
 } from '../common';
 import type { Presentation } from '../types';
+import { palpitationsViva } from '../viva/palpitations';
 
 const P = 'Palpitations';
 const A = 'Associated';
@@ -469,6 +471,16 @@ export const palpitations: Presentation = {
         'Lifestyle, driving and safety-netting',
       ],
     },
+    {
+      id: 'viva',
+      title: 'Viva',
+      short: 'Viva',
+      kind: 'viva',
+      blurb: 'Examiner questions on each patient: recall, then why, then data and what-ifs.',
+      targetSeconds: 240,
+      teach: ['hyperthyroidism', 'amiodarone', 'palpitations-approach'],
+      flow: VIVA_FLOW,
+    },
   ],
   combos: [
     {
@@ -497,7 +509,7 @@ export const palpitations: Presentation = {
       title: 'Full station',
       short: 'Full history',
       blurb: 'Every block, back to back: the OSCE station.',
-      sections: ['hpc', 'systems', 'dh', 'fhsh', 'ddx', 'ix', 'mx'],
+      sections: ['hpc', 'systems', 'dh', 'fhsh', 'ddx', 'ix', 'mx', 'viva'],
     },
   ],
   cases: [
@@ -506,6 +518,7 @@ export const palpitations: Presentation = {
       id: 'graves',
       diagnosis: 'Graves’ disease (thyrotoxicosis)',
       difficulty: 1,
+      viva: palpitationsViva.graves,
       patient: {
         name: 'Hannah Kowalski',
         age: 34,
@@ -705,6 +718,7 @@ export const palpitations: Presentation = {
       id: 'af_amiodarone',
       diagnosis: 'Paroxysmal AF worsened by amiodarone-induced thyrotoxicosis',
       difficulty: 3,
+      viva: palpitationsViva.af_amiodarone,
       patient: {
         name: 'Graham Price',
         age: 68,
@@ -749,6 +763,7 @@ export const palpitations: Presentation = {
       },
       followUps: {
         dh: {
+          id: 'fu-dh',
           prompt: 'His amiodarone monitoring has lapsed. What monitoring does amiodarone need, and why? One per line.',
           items: [
             ix('tft', 'core', 'Thyroid dysfunction — hypo- AND hyperthyroidism (iodine-rich). Baseline, then every 6 months.', [
@@ -944,6 +959,7 @@ export const palpitations: Presentation = {
       id: 'svt',
       diagnosis: 'Supraventricular tachycardia (likely AVNRT)',
       difficulty: 2,
+      viva: palpitationsViva.svt,
       patient: {
         name: 'Megan Lewis',
         age: 26,

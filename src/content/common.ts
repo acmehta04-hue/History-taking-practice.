@@ -489,3 +489,11 @@ export const r = (
   reasonMatch?: string[],
   category?: string,
 ): ReasonItem => ({ id, label, weight, match, why, reasonMatch, category });
+
+/** The plan shown before a Viva block */
+export const VIVA_FLOW = [
+  'Answer in headlines first, then expand: one point per line.',
+  'For "why" questions, give the mechanism, then the consequence.',
+  'With results: say what is abnormal, the likely cause, then what you would do.',
+  'If you are unsure, reason aloud from first principles: examiners reward structure.',
+];

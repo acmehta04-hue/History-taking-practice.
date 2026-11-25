@@ -1,5 +1,6 @@
-import { dhAdherence, dhAllergies, dhCurrent, dhDose, dhOtc, dhSideEffects, ice, item, ix, openQuestion, r } from '../common';
+import { VIVA_FLOW, dhAdherence, dhAllergies, dhCurrent, dhDose, dhOtc, dhSideEffects, ice, item, ix, openQuestion, r } from '../common';
 import type { CaseFile, Presentation } from '../types';
+import { lowMoodViva } from '../viva/low-mood';
 
 const onAntidepressant = (c: CaseFile) => !!c.tags?.includes('on-ssri');
 
@@ -68,7 +69,16 @@ const hpc = [
     id: 'mood_sleep',
     label: 'Sleep',
     group: BIO,
-    match: ['sleep', 'insomn', 'wak(e|ing)', 'night'],
+    match: [
+      'how (are|have) you (been )?sleep',
+      'sleep(ing)? (ok|well|badly|pattern)',
+      'your sleep',
+      '(trouble|problems?|difficulty) (with )?(getting to )?sleep',
+      'insomn',
+      'wak(e|ing) (up )?(early|in the night|at night|during the night)',
+      'early morning',
+      'getting off to sleep|fall(ing)? asleep',
+    ],
     modelQuestion: 'How are you sleeping? Trouble getting off, or waking early?',
     hint: 'Sleep pattern.',
     why: 'Early-morning waking is a biological feature; reduced need for sleep suggests mania.',
@@ -635,6 +645,16 @@ export const lowMood: Presentation = {
         'Continue at least 6 months after remission.',
       ],
     },
+    {
+      id: 'viva',
+      title: 'Viva',
+      short: 'Viva',
+      kind: 'viva',
+      blurb: 'Examiner questions on each patient: recall, then why, then data and what-ifs.',
+      targetSeconds: 240,
+      teach: ['ssris', 'lithium', 'bipolar', 'depression-ladder'],
+      flow: VIVA_FLOW,
+    },
   ],
   combos: [
     {
@@ -663,7 +683,7 @@ export const lowMood: Presentation = {
       title: 'Full station',
       short: 'Full history',
       blurb: 'Every block, back to back: the OSCE station.',
-      sections: ['hpc', 'risk', 'pph', 'dh', 'ddx', 'ix', 'mx'],
+      sections: ['hpc', 'risk', 'pph', 'dh', 'ddx', 'ix', 'mx', 'viva'],
     },
   ],
   cases: [
@@ -672,6 +692,7 @@ export const lowMood: Presentation = {
       id: 'depression_new',
       diagnosis: 'Depressive episode (more severe) — first presentation',
       difficulty: 1,
+      viva: lowMoodViva.depression_new,
       patient: {
         name: 'Laura Mitchell',
         age: 32,
@@ -889,6 +910,7 @@ export const lowMood: Presentation = {
       id: 'ssri_adherence',
       diagnosis: 'Depression relapse due to non-adherence (SSRI sexual side effects)',
       difficulty: 2,
+      viva: lowMoodViva.ssri_adherence,
       tags: ['on-ssri'],
       patient: {
         name: 'Michael Harris',
@@ -935,6 +957,7 @@ export const lowMood: Presentation = {
       },
       followUps: {
         dh: {
+          id: 'fu-dh',
           prompt: 'He admits skipping sertraline because of sexual side effects. What options would you discuss with him? One per line.',
           items: [
             r(
@@ -1138,6 +1161,7 @@ export const lowMood: Presentation = {
       id: 'bipolar',
       diagnosis: 'Bipolar affective disorder — current depressive episode',
       difficulty: 3,
+      viva: lowMoodViva.bipolar,
       patient: {
         name: 'Tom Adeyemi',
         age: 26,

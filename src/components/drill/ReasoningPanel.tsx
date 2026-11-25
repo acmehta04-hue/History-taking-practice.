@@ -122,7 +122,7 @@ export function ReasoningPanel({
       {level === 1 ? (
         <View style={{ gap: 6 }}>
           <Txt style={type.tiny} color="faint">
-            Tap an option, then add your reason
+            Tap an option (add the reason if you can)
           </Txt>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
             {options.map((o) => (

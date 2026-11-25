@@ -1,4 +1,4 @@
-import { combosFor, type Drill, presentations, presentationsFor, programKey, singlesFor } from '../content';
+import { combosFor, deepDives, type Drill, presentations, presentationsFor, programKey, singlesFor } from '../content';
 import type { Presentation } from '../content/types';
 import type { ProgramState } from '../store';
 import { activePlacement, type CalendarEvent, daysBetween, dayKey, EXAM_MODE_DAYS, nextExam } from './calendar';
@@ -16,7 +16,7 @@ export interface Pick {
 type Programs = Record<string, ProgramState>;
 
 function all(programs: Programs, specialtyId?: string): Pick[] {
-  return presentations
+  return [...presentations, ...deepDives]
     .filter((p) => !specialtyId || p.specialtyId === specialtyId)
     .flatMap((p) =>
       [...singlesFor(p), ...combosFor(p)].map((d) => ({

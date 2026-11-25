@@ -6,16 +6,20 @@ import { libraryById } from '../src/content/library';
 import { abdominalPain } from '../src/content/presentations/abdominal-pain';
 import { lowMood } from '../src/content/presentations/low-mood';
 import { palpitations } from '../src/content/presentations/palpitations';
-import type { ChecklistItem, Presentation } from '../src/content/types';
+import type { CaseFile, ChecklistItem, FollowUp, Presentation, SectionDef } from '../src/content/types';
+import { depressionDive } from '../src/content/deepdives/depression';
 import { matchEntry, matchQuestion, normalise, patientReply, splitEntry } from '../src/engine/matcher';
 import { activePlacement, type CalendarEvent, daysBetween, monthGrid, nextExam } from '../src/engine/calendar';
 import { nextLevel, pickCases } from '../src/engine/progression';
 import { comboReadiness, nextUp } from '../src/engine/recommend';
-import { extraQuestions, pickCasesForStage, stageFor, synthesisQuestion } from '../src/engine/stages';
-import { getDrill } from '../src/content';
+import { extraQuestions, pickCasesForStage, stageFor, synthesisQuestion, xid } from '../src/engine/stages';
+import { casesForDrill, checklistFor, findQuestion, getDrill, presentationById, presentations } from '../src/content';
+import { counselTurn, initialCounselState } from '../src/engine/counsel';
+import { cardResults, dueCards, gradeCard, questionScores } from '../src/engine/flashcards';
 import { scoreRep } from '../src/engine/scoring';
 
-const ALL: Presentation[] = [abdominalPain, palpitations, lowMood];
+const ALL: Presentation[] = [abdominalPain, palpitations, lowMood, depressionDive];
+const listOf = (fu: FollowUp | FollowUp[]) => (Array.isArray(fu) ? fu : [fu]);
 const section = (p: Presentation, id: string) => p.sections.find((s) => s.id === id)!;
 const ids = (items: ChecklistItem[]) => items.map((i) => i.id).sort();
 const caseOf = (p: Presentation, id: string) => p.cases.find((c) => c.id === id)!;
@@ -178,14 +182,24 @@ describe('progression', () => {
 describe('content integrity', () => {
   for (const p of ALL) {
     describe(p.title, () => {
-      const interviewItems = p.sections.flatMap((s) => s.checklist ?? []);
+      const source = p.deepDive ? presentationById[p.deepDive.source] : undefined;
+      const interviewItems = [...p.sections, ...(source?.sections ?? [])].flatMap((s) => s.checklist ?? []);
       const itemIds = new Set(interviewItems.map((i) => i.id));
+      const casesFor = (s: SectionDef): CaseFile[] => (s.caseIds ? p.cases.filter((c) => s.caseIds!.includes(c.id)) : p.cases);
+      const questionsOf = (c: CaseFile): FollowUp[] => [
+        ...(c.twist ? [c.twist] : []),
+        ...Object.values(c.followUps ?? {}).flatMap(listOf),
+        ...(c.viva ?? []).flatMap((q) => (q.probe ? [q, q.probe] : [q])),
+      ];
 
       it('every pattern compiles', () => {
         for (const i of interviewItems) for (const m of i.match) new RegExp(m, 'i');
-        for (const c of p.cases)
-          for (const list of Object.values(c.reasoning))
-            for (const i of list) [...i.match, ...(i.reasonMatch ?? [])].forEach((m) => new RegExp(m, 'i'));
+        for (const c of p.cases) {
+          const lists = [...Object.values(c.reasoning), ...questionsOf(c).map((q) => q.items)];
+          for (const list of lists) for (const i of list) [...i.match, ...(i.reasonMatch ?? [])].forEach((m) => new RegExp(m, 'i'));
+          for (const d of [...Object.values(c.distractors ?? {}).flat(), ...questionsOf(c).flatMap((q) => q.distractors ?? [])])
+            d.match.forEach((m) => new RegExp(m, 'i'));
+        }
       });
 
       it('every model question earns credit for its own item', () => {
@@ -210,25 +224,18 @@ describe('content integrity', () => {
             for (const d of c.distractors?.[sec] ?? [])
               assert.ok(matchEntry(d.label, list, c.distractors?.[sec]).distractor, `${c.id}/${sec}: distractor "${d.label}" not detected`);
           }
-          if (c.twist)
-            for (const i of c.twist.items)
-              assert.ok(
-                matchEntry(i.label, c.twist.items).items.some((x) => x.id === i.id),
-                `${c.id} twist "${i.label}"`,
-              );
           const syn = synthesisQuestion(c, 3);
-          if (syn)
-            for (const i of syn.items)
+          for (const q of [...questionsOf(c), ...(syn ? [syn] : [])]) {
+            for (const i of q.items) {
+              const m = matchEntry(i.label, q.items, q.distractors);
               assert.ok(
-                matchEntry(i.label, syn.items).items.some((x) => x.id === i.id),
-                `${c.id} synthesis "${i.label}"`,
+                m.items.some((x) => x.id === i.id),
+                `${c.id} question "${q.prompt.slice(0, 40)}…": label "${i.label}" matched [${m.items.map((x) => x.id)}]${m.distractor ? ' (distractor ' + m.distractor.label + ')' : ''}`,
               );
-          for (const [sec, fu] of Object.entries(c.followUps ?? {}))
-            for (const i of fu.items)
-              assert.ok(
-                matchEntry(i.label, fu.items).items.some((x) => x.id === i.id),
-                `${c.id}/${sec} follow-up "${i.label}"`,
-              );
+            }
+            for (const d of q.distractors ?? [])
+              assert.ok(matchEntry(d.label, q.items, q.distractors).distractor, `${c.id}: distractor "${d.label}" not detected`);
+          }
         }
       });
 
@@ -238,7 +245,22 @@ describe('content integrity', () => {
 
       it('every case has a model answer for every reasoning section', () => {
         for (const s of p.sections.filter((x) => x.kind === 'reasoning'))
-          for (const c of p.cases) assert.ok((c.reasoning[s.id] ?? []).length >= 3, `${c.id} missing ${s.id}`);
+          for (const c of casesFor(s)) assert.ok((c.reasoning[s.id] ?? []).length >= 3, `${c.id} missing ${s.id}`);
+      });
+
+      it('section patient lists point at real patients', () => {
+        for (const s of p.sections) {
+          for (const id of s.caseIds ?? [])
+            assert.ok(
+              p.cases.some((c) => c.id === id),
+              `${s.id}: no patient ${id}`,
+            );
+          assert.ok(casesFor(s).length >= 2, `${s.id} needs at least 2 patients`);
+        }
+        for (const c of p.cases) {
+          for (const k of [...Object.keys(c.openings ?? {}), ...Object.keys(c.summaries ?? {}), ...Object.keys(c.followUps ?? {})])
+            assert.ok(p.sections.some((s) => s.id === k) || source?.sections.some((s) => s.id === k), `${c.id}: unknown section ${k}`);
+        }
       });
 
       it('combined drills point at real blocks', () => {
@@ -248,28 +270,63 @@ describe('content integrity', () => {
         }
       });
 
-      it('every patient has a difficulty and a Challenge twist', () => {
-        for (const c of p.cases) {
-          assert.ok([1, 2, 3].includes(c.difficulty), `${c.id} difficulty`);
-          assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
-        }
+      it('every patient has a difficulty', () => {
+        for (const c of p.cases) assert.ok([1, 2, 3].includes(c.difficulty), `${c.id} difficulty`);
       });
 
       it('teaching links exist', () => {
         for (const s of p.sections) for (const t of s.teach ?? []) assert.ok(libraryById[t], `missing library card ${t}`);
       });
 
-      it('ids are unique within each section', () => {
+      it('ids are unique within each section, and flashcard ids within each patient', () => {
         for (const s of p.sections) {
           const list = (s.checklist ?? []).map((i) => i.id);
           assert.equal(new Set(list).size, list.length, `${s.id} has duplicate ids`);
         }
-        for (const c of p.cases)
+        for (const c of p.cases) {
           for (const [k, list] of Object.entries(c.reasoning)) {
             const l = list.map((i) => i.id);
             assert.equal(new Set(l).size, l.length, `${c.id}/${k} has duplicate ids`);
           }
+          for (const q of questionsOf(c)) {
+            const l = q.items.map((i) => i.id);
+            assert.equal(new Set(l).size, l.length, `${c.id}: duplicate item ids in "${q.prompt.slice(0, 30)}"`);
+          }
+          const cardIds = questionsOf(c)
+            .map((q) => q.id)
+            .filter(Boolean);
+          assert.equal(new Set(cardIds).size, cardIds.length, `${c.id} has duplicate flashcard ids`);
+        }
       });
+
+      if (p.kind !== 'deepdive') {
+        it('every patient has a Challenge twist', () => {
+          for (const c of p.cases) assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
+        });
+        it('every patient has viva questions at all three tiers', () => {
+          for (const c of p.cases) {
+            const tiers = new Set((c.viva ?? []).map((q) => q.tier));
+            assert.deepEqual([...tiers].sort(), [1, 2, 3], `${c.id} viva tiers`);
+            assert.ok(
+              (c.viva ?? []).some((q) => q.probe),
+              `${c.id} has no examiner probe`,
+            );
+          }
+        });
+      } else {
+        it('every purpose-tagged question says what it is for', () => {
+          for (const s of p.sections.filter((x) => x.tagPurpose))
+            for (const i of s.checklist ?? []) if (i.purpose) assert.ok(i.target, `${i.id} has no target`);
+        });
+        it('counselling concerns point at points the patient will hear', () => {
+          for (const s of p.sections.filter((x) => x.kind === 'counsel'))
+            for (const c of casesFor(s)) {
+              const ids = new Set(checklistFor(s, c).map((i) => i.id));
+              assert.ok((c.concerns ?? []).length >= 3, `${c.id} needs concerns`);
+              for (const q of c.concerns ?? []) assert.ok(ids.has(q.itemId), `${c.id}: concern points at ${q.itemId}`);
+            }
+        });
+      }
     });
   }
 });
@@ -279,11 +336,11 @@ describe('stages (sets get harder)', () => {
     assert.deepEqual([0, 1, 2, 3, 7].map(stageFor), [1, 2, 3, 3, 3]);
   });
   it('picks easier patients first and the hardest at Challenge', () => {
-    const easy = pickCasesForStage(abdominalPain, 1, 0).map((c) => c.difficulty);
-    const hard = pickCasesForStage(abdominalPain, 3, 2).map((c) => c.difficulty);
+    const easy = pickCasesForStage(abdominalPain.cases, 1, 0).map((c) => c.difficulty);
+    const hard = pickCasesForStage(abdominalPain.cases, 3, 2).map((c) => c.difficulty);
     assert.equal(hard[0], 3);
     assert.ok(easy.reduce((a, b) => a + b, 0) < hard.reduce((a, b) => a + b, 0));
-    assert.ok(!pickCasesForStage(abdominalPain, 1, 0).some((c) => c.id === 'ectopic'));
+    assert.ok(!pickCasesForStage(abdominalPain.cases, 1, 0).some((c) => c.id === 'ectopic'));
   });
   it('adds commit-and-defend from Application, and must-not-miss at Challenge', () => {
     const hpc = section(abdominalPain, 'hpc');
@@ -296,7 +353,7 @@ describe('stages (sets get harder)', () => {
     const mx = section(abdominalPain, 'mx');
     const c = caseOf(abdominalPain, 'appendicitis');
     assert.equal(extraQuestions(mx, c, 2).length, 0);
-    assert.match(extraQuestions(mx, c, 3)[0].prompt, /^Twist/);
+    assert.equal(extraQuestions(mx, c, 3)[0].label, 'Challenge · new information');
     assert.equal(extraQuestions(mx, c, 3, false).length, 0);
   });
   it('credits a committed diagnosis with its reason', () => {
@@ -340,5 +397,128 @@ describe('calendar', () => {
     const due = { level: 2 as const, setsCompleted: 1, bestAccuracy: 0.7, masteredStreak: 0, nextDueAt: 0 };
     const pick = nextUp({ 'palpitations:hpc': due }, events, new Date(2026, 10, 24).getTime());
     assert.match(pick.reason ?? '', /OSCE soon/);
+  });
+});
+
+describe('viva', () => {
+  it('asks recall at Foundation, adds why with probes at Application, and data at Challenge', () => {
+    const viva = section(lowMood, 'viva');
+    const c = caseOf(lowMood, 'bipolar');
+    const [s1, s2, s3] = ([1, 2, 3] as const).map((st) => extraQuestions(viva, c, st));
+    assert.ok(s1.every((q) => q.label === 'Viva · recall'));
+    assert.ok(s2.some((q) => q.label === 'Examiner follow-up'));
+    assert.ok(s3.some((q) => q.label === 'Viva · data and what-ifs'));
+    assert.ok(s1.length < s2.length && s2.length < s3.length);
+  });
+  it('the full station ends with the viva', () => {
+    for (const p of presentations) assert.equal(getDrill(p.id, 'combo-full')!.sections.at(-1)!.id, 'viva');
+  });
+  it('marks a viva answer by keyword', () => {
+    const q = caseOf(lowMood, 'bipolar').viva!.find((x) => x.id === 'bp-lithium-se')!;
+    const m = matchEntry('Polyuria from nephrogenic diabetes insipidus', q.items);
+    assert.ok(m.items.some((i) => i.id === 'renal'));
+  });
+});
+
+describe('flashcards', () => {
+  it('missed cards come back now; remembered ones move up a box', () => {
+    const now = 1_000_000;
+    const miss = gradeCard(undefined, 0.4, now);
+    assert.equal(miss.box, 0);
+    assert.equal(miss.due, now);
+    const hit = gradeCard(undefined, 0.9, now);
+    assert.equal(hit.box, 1);
+    assert.equal(hit.due, now + 86400000);
+    assert.equal(gradeCard(hit, 0.9, now).box, 2);
+    assert.equal(gradeCard(hit, 0.2, now).box, 0);
+    assert.deepEqual(dueCards({ a: miss, b: hit }, now), ['a']);
+  });
+  it('scores each question separately and records cards only for questions with an id', () => {
+    const q = caseOf(lowMood, 'bipolar').viva![0];
+    const covered = { [xid(0, q.items[0].id)]: { method: 'typed' as const } };
+    const [score] = questionScores([q], covered);
+    assert.ok(score.accuracy > 0 && score.accuracy < 1);
+    assert.deepEqual(
+      cardResults([q], covered).map((r) => r.qid),
+      [q.id],
+    );
+    assert.deepEqual(cardResults([{ prompt: 'no id', items: q.items }], covered), []);
+  });
+  it('finds every flashcard question from its key', () => {
+    for (const p of ALL)
+      for (const c of p.cases) {
+        for (const q of c.viva ?? []) assert.ok(findQuestion(p.id, c.id, q.id), `${p.id}/${c.id}/${q.id}`);
+        for (const fu of Object.values(c.followUps ?? {}).flatMap(listOf))
+          if (fu.id) assert.ok(findQuestion(p.id, c.id, fu.id), `${p.id}/${c.id}/${fu.id}`);
+      }
+  });
+});
+
+describe('deep dive: depression', () => {
+  const why = section(depressionDive, 'why');
+  it('uses the right patients for each set', () => {
+    const ids = (sec: string) =>
+      casesForDrill(depressionDive, getDrill(depressionDive.id, sec)!)
+        .map((c) => c.id)
+        .sort();
+    assert.deepEqual(ids('why'), ['bipolar', 'depression_new', 'ssri_adherence']);
+    assert.deepEqual(ids('counsel'), ['arthur', 'depression_new', 'jade']);
+    assert.deepEqual(ids('prescribe'), ['arthur', 'depression_new', 'jade']);
+  });
+  it('tags every history question with a purpose', () => {
+    const purposes = new Set(why.checklist!.filter((i) => i.purpose).map((i) => i.purpose));
+    assert.deepEqual([...purposes].sort(), ['exclude', 'risk', 'severity']);
+    const got = matchQuestion('Have you ever felt really high, needing little sleep?', why.checklist!);
+    assert.deepEqual(
+      got.map((i) => i.id),
+      ['mood_mania'],
+    );
+    assert.equal(got[0].purpose, 'exclude');
+  });
+  it('gives extra credit for tagging the purpose correctly', () => {
+    const items = [{ id: 'a', weight: 'core' as const, hasReason: true }];
+    const right = scoreRep({ items, covered: { a: { method: 'typed', reason: true } }, level: 1, durationSec: 999, targetSeconds: 1 });
+    const wrong = scoreRep({ items, covered: { a: { method: 'typed', reason: false } }, level: 1, durationSec: 999, targetSeconds: 1 });
+    assert.ok(right.accuracy > wrong.accuracy);
+  });
+  it('shows patient-specific counselling points only to the right patient', () => {
+    const counsel = section(depressionDive, 'counsel');
+    const ids = (cid: string) => checklistFor(counsel, caseOf(depressionDive, cid)).map((i) => i.id);
+    assert.ok(ids('arthur').includes('cs_sodium') && !ids('jade').includes('cs_sodium'));
+    assert.ok(ids('jade').includes('cs_review_1wk') && !ids('arthur').includes('cs_review_1wk'));
+    assert.ok(ids('depression_new').includes('cs_sjw') && !ids('arthur').includes('cs_sjw'));
+  });
+  it('recognises counselling explanations', () => {
+    const counsel = section(depressionDive, 'counsel');
+    const got = matchQuestion('It usually takes a few weeks to work, and please don’t stop it suddenly.', counsel.checklist!).map(
+      (i) => i.id,
+    );
+    assert.ok(got.includes('cs_onset') && got.includes('cs_stopping'), got.join(', '));
+  });
+  it('reads a prescription written on one line', () => {
+    const laura = caseOf(depressionDive, 'depression_new');
+    const m = matchEntry('Sertraline 50 mg oral once daily', laura.reasoning.prescribe);
+    assert.deepEqual(m.items.map((i) => i.id).sort(), ['rx_dose', 'rx_drug', 'rx_freq', 'rx_route']);
+    assert.ok(matchEntry('Sertraline 200 mg once daily', laura.reasoning.prescribe, laura.distractors?.prescribe).distractor);
+  });
+});
+
+describe('counselling patient', () => {
+  const arthur = caseOf(depressionDive, 'arthur');
+  const items = checklistFor(section(depressionDive, 'counsel'), arthur);
+  const pick = (id: string) => items.find((i) => i.id === id)!;
+  it('acknowledges what was explained, then asks back from the second turn', () => {
+    const t1 = counselTurn({ gained: [pick('cs_what')], covered: new Set(['cs_what']), c: arthur, state: initialCounselState });
+    assert.match(t1.reply, /sleeping tablet/);
+    assert.equal(t1.state.open, null);
+    const t2 = counselTurn({ gained: [], covered: new Set(['cs_what']), c: arthur, state: t1.state });
+    assert.match(t2.reply, /water tablet/);
+    const t3 = counselTurn({ gained: [pick('cs_sodium')], covered: new Set(['cs_what', 'cs_sodium']), c: arthur, state: t2.state });
+    assert.match(t3.reply, /naproxen/);
+  });
+  it('asks again once if a question is ignored', () => {
+    const r1 = counselTurn({ gained: [], covered: new Set(), c: arthur, state: { next: 1, open: 0, openTurns: 0, turn: 2 } });
+    const r2 = counselTurn({ gained: [], covered: new Set(), c: arthur, state: r1.state });
+    assert.match(r2.reply, /still not sure/);
   });
 });

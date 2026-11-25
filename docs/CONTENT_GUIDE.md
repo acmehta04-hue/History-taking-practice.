@@ -18,6 +18,26 @@ Specialty → Presentation (UKMLA presentation, e.g. "Palpitations")
 - **Combined drills** (`combos` on the presentation) chain blocks on one patient. List the section ids in the order a real history would run them.
 - The **commit-and-defend** question (Application and Challenge sets) is generated automatically from the first two `ddx` items, so put the leading diagnosis first and give it a good `reasonMatch`.
 
+## Viva questions
+
+Each patient has `viva` questions in `src/content/viva/<presentation>.ts`:
+
+- `tier: 1` recall ("What are the side effects of lithium?"), `tier: 2` explain why ("Why avoid NSAIDs on lithium?"), `tier: 3` data or what-if, with the results in `data`.
+- Give tier-2 questions a `probe`: the examiner's follow-up, asked from Application onwards.
+- Give recall questions 1–2 `distractors` (plausible wrong answers) so Guided mode isn't a giveaway.
+- Every question has an `id`, so it becomes a flashcard. Keep ids unique within the patient.
+
+## Deep dives
+
+A deep dive is a `Presentation` with `kind: 'deepdive'` in `src/content/deepdives/`. Its sections use `caseIds` to choose patients per set:
+
+1. **Why?** (`kind: 'interview'`, `tagPurpose: true`): each checklist item has a `purpose` (`exclude`, `risk`, `severity`) and a `target` saying what it excludes or checks.
+2. **Ladder** (`kind: 'reasoning'`): investigations, then `followUps.ladder`: first line, second line, third line, then "your choice".
+3. **Counsel** (`kind: 'counsel'`): the checklist holds what a good explanation covers (`modelQuestion` is the model statement). Each patient lists `concerns` (what they ask back) and acknowledgements in `answers`. Patient-specific points use `appliesTo` with `tags`.
+4. **PSA** (`kind: 'reasoning'`): the prescription (drug, dose, route, frequency), then `followUps.prescribe`: prescription review, monitoring, data interpretation, viva.
+
+Reuse a presentation's patients by spreading their case files (see `deepdives/depression.ts`), and use `openings` / `summaries` for set-specific first words or vignettes.
+
 ## Weights
 
 | Weight | Meaning | Score weight |

@@ -9,20 +9,24 @@ History-taking practice for UK medical students. You drill **one block of a hist
 - **Stages:** the work gets harder as you go. Set 1 **Foundation** uses classic patients. Set 2 **Application** makes you commit to a diagnosis and defend it after each history. Set 3+ **Challenge** brings the hardest patients first, 25% less time, the must-not-miss diagnosis, and a twist (new information) to re-think. See `src/engine/stages.ts`.
 - **Combined drills:** once each block reaches L2, chain blocks on one patient: HPC + Systems, PPH + DH, DH + FH/SH, Ddx → Ix → Mx, then the full station.
 - **Plan:** a calendar for placements and exams. Home steers drills to your current placement and switches to exam mode 4 weeks before an exam.
+- **Viva:** every presentation has a Viva block. Foundation asks recall questions; Application adds "explain why" with examiner follow-ups; Challenge adds data interpretation and what-ifs. The full-station combined drill ends with the viva.
+- **Deep dives:** pick a UKMLA condition instead of a presentation and follow it through four sets: a history where you tag every question (exclude / risk factor / severity), the management ladder (first, second, third line, then choose the drug), a counselling session where the patient asks back, and PSA-style prescribing with interactions, monitoring, data interpretation and viva questions. First deep dive: depression → sertraline.
+- **Viva flashcards:** every viva and PSA question becomes a card. Missed cards come back straight away; remembered ones after 1, 3, 7, 14 and 30 days.
 
 It runs on iPhone, Android and the web from one codebase (Expo + React Native).
 
 > Educational tool for medical students, not clinical advice. Content must be checked by a clinician before release — see `docs/CONTENT_GUIDE.md`.
 
-## What's in v0.2
+## What's in v0.3
 
 | Presentation | Patients | Drills |
 | --- | --- | --- |
-| Abdominal pain | Appendicitis, cholecystitis, Crohn's, ectopic | HPC · Systems · DH · Ddx · Ix · Mx |
-| Palpitations | Graves', AF + amiodarone thyrotoxicosis, SVT | HPC · Systems · DH · FH/SH · Ddx · Ix · Mx |
-| Low mood | New depression, SSRI non-adherence, bipolar depression | HPC · Risk · PPH · DH · Ddx · Ix · Mx |
+| Abdominal pain | Appendicitis, cholecystitis, Crohn's, ectopic | HPC · Systems · DH · Ddx · Ix · Mx · Viva |
+| Palpitations | Graves', AF + amiodarone thyrotoxicosis, SVT | HPC · Systems · DH · FH/SH · Ddx · Ix · Mx · Viva |
+| Low mood | New depression, SSRI non-adherence, bipolar depression | HPC · Risk · PPH · DH · Ddx · Ix · Mx · Viva |
+| **Deep dive: depression** | Laura, Michael, Tom, plus Jade (19) and Arthur (74) for prescribing | Why? · Ladder · Counsel · PSA |
 
-There are also 12 teaching cards: SSRIs, the NICE depression ladder, risk assessment, lithium, antipsychotic monitoring, amiodarone, hyperthyroidism, adherence, and more.
+There are also 40 viva questions with examiner follow-ups, and 13 teaching cards: PSA prescribing, SSRIs, the NICE depression ladder, risk assessment, lithium, antipsychotic monitoring, amiodarone, hyperthyroidism, adherence, and more.
 
 ## Run it (no coding experience needed)
 
@@ -66,6 +70,8 @@ src/
     (tabs)/index.tsx      Home dashboard
     (tabs)/topics.tsx     Drill picker
     (tabs)/plan.tsx       Calendar: placements and exams
+    deep/[id]             A deep dive: four sets for one condition
+    viva.tsx              Viva flashcard review
     (tabs)/progress.tsx   Progress and charts
     (tabs)/library.tsx    Teaching cards
     presentation/[id]     One presentation and its drills
@@ -77,6 +83,8 @@ src/
     common.ts             Reusable checklist items (SOCRATES, drug history…)
     presentations/*.ts    One file per presentation
     library.ts            Teaching cards
+    viva/*.ts             Viva questions per presentation
+    deepdives/*.ts        Deep dives (condition → history → ladder → counselling → PSA)
   engine/                 Matching, scoring, levels, stages, calendar, recommendations (no UI, unit-tested)
   store/                  Saved progress (on-device, AsyncStorage)
   theme/                  Colours and type — change the look here

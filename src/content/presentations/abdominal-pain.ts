@@ -1,4 +1,5 @@
 import {
+  VIVA_FLOW,
   alcohol,
   couldBePregnant,
   dhAdherence,
@@ -16,6 +17,7 @@ import {
   socrates,
 } from '../common';
 import type { Presentation } from '../types';
+import { abdominalPainViva } from '../viva/abdominal-pain';
 
 const SR = 'Systems review';
 
@@ -300,6 +302,16 @@ export const abdominalPain: Presentation = {
         'Safety-net and follow-up.',
       ],
     },
+    {
+      id: 'viva',
+      title: 'Viva',
+      short: 'Viva',
+      kind: 'viva',
+      blurb: 'Examiner questions on each patient: recall, then why, then data and what-ifs.',
+      targetSeconds: 240,
+      teach: ['abdo-red-flags', 'socrates'],
+      flow: VIVA_FLOW,
+    },
   ],
   combos: [
     {
@@ -321,7 +333,7 @@ export const abdominalPain: Presentation = {
       title: 'Full station',
       short: 'Full history',
       blurb: 'Every block, back to back: the OSCE station.',
-      sections: ['hpc', 'systems', 'dh', 'ddx', 'ix', 'mx'],
+      sections: ['hpc', 'systems', 'dh', 'ddx', 'ix', 'mx', 'viva'],
     },
   ],
   cases: [
@@ -330,6 +342,7 @@ export const abdominalPain: Presentation = {
       id: 'appendicitis',
       diagnosis: 'Acute appendicitis',
       difficulty: 1,
+      viva: abdominalPainViva.appendicitis,
       patient: {
         name: 'Daniel Okafor',
         age: 22,
@@ -529,6 +542,7 @@ export const abdominalPain: Presentation = {
       id: 'cholecystitis',
       diagnosis: 'Acute cholecystitis',
       difficulty: 2,
+      viva: abdominalPainViva.cholecystitis,
       patient: {
         name: 'Sarah Whitfield',
         age: 45,
@@ -740,6 +754,7 @@ export const abdominalPain: Presentation = {
       id: 'crohns',
       diagnosis: 'Crohn’s disease (new presentation)',
       difficulty: 2,
+      viva: abdominalPainViva.crohns,
       patient: {
         name: 'Aisha Rahman',
         age: 24,
@@ -973,6 +988,7 @@ export const abdominalPain: Presentation = {
       id: 'ectopic',
       diagnosis: 'Ectopic pregnancy',
       difficulty: 3,
+      viva: abdominalPainViva.ectopic,
       patient: {
         name: 'Chloe Bennett',
         age: 28,

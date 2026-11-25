@@ -460,6 +460,48 @@ export const library: LibraryCard[] = [
     ],
     verify: ['NICE CG185 Bipolar disorder', 'MHRA valproate safety measures (2024)'],
   },
+  {
+    id: 'psa',
+    title: 'Prescribing Safety Assessment: habits that score',
+    kicker: 'Prescribing',
+    specialtyId: 'psych',
+    minutes: 4,
+    blocks: [
+      {
+        heading: 'What it tests',
+        points: [
+          'Eight question types: prescribing, prescription review, planning management, communicating information, calculation skills, adverse drug reactions, drug monitoring, and data interpretation.',
+          'It is open-book: you use the BNF throughout, so practise finding things in it quickly.',
+        ],
+      },
+      {
+        heading: 'Writing a prescription',
+        points: [
+          'Check allergies (and the reaction), weight, kidney function and the full medicines list first.',
+          'Approved (generic) name, dose, route, frequency, and a start date or duration where relevant.',
+          'Write units and micrograms in full; never use a trailing zero (5 mg, not 5.0 mg).',
+          'One drug, one decision: if you stop something, say why.',
+        ],
+      },
+      {
+        heading: 'SSRI interactions to know',
+        points: [
+          'Bleeding: NSAIDs, aspirin, anticoagulants. Avoid the combination or add a PPI.',
+          'Serotonin syndrome: triptans, tramadol, St John’s wort, MAOIs, linezolid.',
+          'Hyponatraemia: older age, thiazide diuretics. Check sodium.',
+          'QT prolongation: citalopram and escitalopram (dose limits), with other QT-prolonging drugs.',
+        ],
+      },
+      {
+        heading: 'Data interpretation',
+        points: [
+          'Say what is abnormal, the most likely cause (often the drug), the risk, then the action.',
+          'Ask whether the drug should be stopped, reduced, or continued with monitoring.',
+        ],
+      },
+    ],
+    verify: ['BNF', 'The PSA practice papers', 'MHRA Drug Safety Updates'],
+  },
 ];
 
 export const libraryById = Object.fromEntries(library.map((c) => [c.id, c]));

@@ -3,7 +3,8 @@ import { Alert, Platform, View } from 'react-native';
 
 import { BarList, LineChart } from '@/components/charts';
 import { Button, Card, Chip, LevelBadge, pct, Row, Screen, SectionHeader, Stat, Txt } from '@/components/ui';
-import { combosFor, getDrill, presentationById, presentations, programKey, singlesFor } from '@/content';
+import { combosFor, deepDives, getDrill, presentationById, presentations, programKey, singlesFor } from '@/content';
+import { isLearned } from '@/engine/flashcards';
 import { STAGES } from '@/engine/stages';
 import { relativeDue } from '@/engine/recommend';
 import { average } from '@/engine/scoring';
@@ -21,11 +22,17 @@ const BLOCKS = [
   { id: 'ix', label: 'Investigations' },
   { id: 'mx', label: 'Management' },
   { id: 'combo', label: 'Combined drills' },
+  { id: 'viva', label: 'Viva' },
+  { id: 'why', label: 'Deep dive: history with a purpose' },
+  { id: 'ladder', label: 'Deep dive: management ladder' },
+  { id: 'counsel', label: 'Deep dive: counselling' },
+  { id: 'prescribe', label: 'Deep dive: prescribing (PSA)' },
 ];
 
 export default function Progress() {
   const sets = useStore((s) => s.sets);
   const programs = useStore((s) => s.programs);
+  const cards = useStore((s) => s.vivaCards);
   const resetAll = useStore((s) => s.resetAll);
 
   const total = sets.reduce((a, s) => a + s.points, 0);
@@ -44,7 +51,7 @@ export default function Progress() {
     .sort((a, b) => a.value - b.value)
     .map((b) => ({ label: b.label, value: b.value, sub: `${pct(b.value)} · last ${b.n}` }));
 
-  const started = presentations.flatMap((p) =>
+  const started = [...presentations, ...deepDives].flatMap((p) =>
     [...singlesFor(p), ...combosFor(p)].map((s) => ({ p, s, prog: programs[programKey(p.id, s.id)] })).filter((x) => x.prog),
   );
 
@@ -70,6 +77,14 @@ export default function Progress() {
       <Row gap={space.md} style={{ alignItems: 'stretch' }}>
         <Stat label="Total points" value={String(total)} sub={`${sets.length} sets`} />
         <Stat label="Streak" value={`${streakDays(sets)}d`} sub="days in a row" />
+      </Row>
+      <Row gap={space.md} style={{ alignItems: 'stretch' }}>
+        <Stat
+          label="Viva cards"
+          value={String(Object.keys(cards).length)}
+          sub={`${Object.values(cards).filter(isLearned).length} learned`}
+        />
+        <Stat label="Drills started" value={String(Object.keys(programs).length)} sub="blocks, combos and deep dive sets" />
       </Row>
 
       <Card style={{ gap: space.sm }}>

@@ -3,16 +3,33 @@ import { View } from 'react-native';
 
 import { Card, Icon, Row, Screen, Txt } from '@/components/ui';
 import { library, specialties } from '@/content';
+import { dueCards } from '@/engine/flashcards';
+import { useStore } from '@/store';
 import { space, type, useTheme } from '@/theme';
 
 export default function Library() {
   const t = useTheme();
+  const due = dueCards(useStore((s) => s.vivaCards)).length;
   return (
     <Screen>
       <View style={{ marginTop: space.sm }}>
         <Txt style={type.display}>Learn</Txt>
         <Txt color="soft">Short teaching cards linked to the drills: mechanisms, side effects, NICE ladders, monitoring and red flags.</Txt>
       </View>
+
+      <Card variant="hero" onPress={() => router.push('/viva')} accessibilityLabel="Viva flashcards" style={{ gap: space.sm }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt style={type.tiny} color="heroSoft">
+              Viva flashcards · {due} due
+            </Txt>
+            <Txt style={type.heading} color="hero">
+              Review your viva and PSA questions
+            </Txt>
+          </View>
+          <Icon name="albums-outline" size={28} color={t.heroInk} />
+        </Row>
+      </Card>
 
       {specialties
         .filter((s) => library.some((c) => c.specialtyId === s.id))

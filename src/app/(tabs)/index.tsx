@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, LevelBadge, pct, Ring, Row, Screen, SectionHeader, Stat, Txt } from '@/components/ui';
-import { library, presentationsFor, programKey, specialties } from '@/content';
+import { deepDives, library, presentationsFor, programKey, specialties, specialtyById } from '@/content';
 import { activePlacement, daysBetween, dayKey, nextExam, parseDay } from '@/engine/calendar';
+import { dueCards } from '@/engine/flashcards';
 import { SETS_PER_BLOCK } from '@/engine/progression';
 import { dueNow, nextUp, relativeDue, specialtyMastery } from '@/engine/recommend';
 import { average } from '@/engine/scoring';
@@ -37,6 +38,8 @@ export default function Home() {
   const prog = pick.program;
   const setNo = Math.min((prog?.setsCompleted ?? 0) + 1, 99);
   const tip = library[new Date().getDate() % library.length];
+  const vivaCards = useStore((s) => s.vivaCards);
+  const vivaDue = dueCards(vivaCards).length;
 
   const start = (presentationId: string, sectionId: string) =>
     router.push({ pathname: '/drill/[presentationId]/[sectionId]', params: { presentationId, sectionId } });
@@ -117,6 +120,26 @@ export default function Home() {
         <Stat label="Accuracy · 7d" value={week.length ? pct(weekAcc) : '—'} sub="model answer covered" />
       </Row>
 
+      {/* Viva flashcards */}
+      {vivaDue ? (
+        <Card onPress={() => router.push('/viva')} accessibilityLabel="Viva flashcards" style={{ padding: space.lg }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt style={type.tiny} color="faint">
+                Viva flashcards
+              </Txt>
+              <Txt style={type.heading}>
+                {vivaDue} question{vivaDue === 1 ? '' : 's'} due
+              </Txt>
+              <Txt style={type.small} color="soft">
+                The ones you missed come back first.
+              </Txt>
+            </View>
+            <Icon name="albums-outline" size={28} />
+          </Row>
+        </Card>
+      ) : null}
+
       {/* Due */}
       {due.length > 1 ? (
         <>
@@ -193,6 +216,36 @@ export default function Home() {
           );
         })}
       </View>
+
+      {/* Deep dives */}
+      <SectionHeader title="Deep dives" action="All conditions" onAction={() => router.push('/topics')} />
+      {deepDives.map((d) => {
+        const sp = specialtyById[d.specialtyId];
+        const tone = t.tones[sp.tone];
+        const done = d.sections.filter((s) => programs[programKey(d.id, s.id)]).length;
+        return (
+          <Card
+            key={d.id}
+            tone={sp.tone}
+            onPress={() => router.push({ pathname: '/deep/[id]', params: { id: d.id } })}
+            style={{ gap: space.sm }}>
+            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt style={type.tiny} color={tone.ink}>
+                  UKMLA condition · {done}/{d.sections.length} sets started
+                </Txt>
+                <Txt style={type.title} color={tone.ink}>
+                  {d.title} → {d.deepDive?.treatment}
+                </Txt>
+                <Txt style={type.small} color={tone.ink}>
+                  History with a purpose · management ladder · counselling · prescribing (PSA)
+                </Txt>
+              </View>
+              <Icon name="arrow-forward-circle" size={28} color={tone.ink} />
+            </Row>
+          </Card>
+        );
+      })}
 
       {/* Learn */}
       <SectionHeader title="Learn in 3 minutes" action="Library" onAction={() => router.push('/library')} />

@@ -1,13 +1,14 @@
-import type { CaseFile, FollowUp, Presentation, ReasonItem, SectionDef } from '../content/types';
+import type { CaseFile, FollowUp, ReasonItem, SectionDef, SectionKind } from '../content/types';
 
 /**
  * Challenge stages. Assistance level (L1–L3) controls how much HELP you get;
  * the stage controls how HARD the work is. Stage rises with sets completed:
  *
- *  1 Foundation  — classic patients, standard time
- *  2 Application — mixed patients; after each history you commit to a diagnosis and defend it
+ *  1 Foundation  — classic patients, standard time; viva asks recall questions
+ *  2 Application — mixed patients; after each history you commit to a diagnosis and defend it;
+ *                  viva adds "explain why" questions and examiner follow-ups
  *  3 Challenge   — hardest patients first, 25% less time, must-not-miss reasoning,
- *                  and a twist (new information) after each reasoning rep
+ *                  a twist after each reasoning rep; viva adds data and what-if questions
  */
 export type Stage = 1 | 2 | 3;
 
@@ -21,13 +22,41 @@ export const STAGES: Record<Stage, { name: string; blurb: string; timeFactor: nu
   },
 };
 
+/** What a stage changes, in words that fit the drill (a viva block levels up differently from a history) */
+export function stageBlurb(stage: Stage, kinds: SectionKind[]): string {
+  if (kinds.every((k) => k === 'viva'))
+    return {
+      1: 'Recall questions.',
+      2: 'Adds “explain why” questions and examiner follow-ups.',
+      3: 'Adds data interpretation and what-ifs, with 25% less time.',
+    }[stage];
+  if (kinds.every((k) => k === 'counsel'))
+    return {
+      1: 'Straightforward patients at a steady pace.',
+      2: 'Patients with more questions and interactions.',
+      3: 'The most complex patients first, with 25% less time.',
+    }[stage];
+  if (kinds.includes('interview')) return STAGES[stage].blurb;
+  return {
+    1: 'Classic patients at a steady pace.',
+    2: 'Mixed patients.',
+    3: 'Hardest patients first, 25% less time, and a twist to re-think.',
+  }[stage];
+}
+
+export const VIVA_TIERS: Record<1 | 2 | 3, string> = {
+  1: 'Viva · recall',
+  2: 'Viva · explain why',
+  3: 'Viva · data and what-ifs',
+};
+
 export function stageFor(setsCompleted: number): Stage {
   return Math.min(3, setsCompleted + 1) as Stage;
 }
 
 /** Choose this set's patients by difficulty: easy first at stage 1, hardest first at stage 3 */
-export function pickCasesForStage(p: Presentation, stage: Stage, setsCompleted: number, reps = 3): CaseFile[] {
-  const sorted = [...p.cases].sort((a, b) => a.difficulty - b.difficulty || a.id.localeCompare(b.id));
+export function pickCasesForStage(cases: CaseFile[], stage: Stage, setsCompleted: number, reps = 3): CaseFile[] {
+  const sorted = [...cases].sort((a, b) => a.difficulty - b.difficulty || a.id.localeCompare(b.id));
   const n = sorted.length;
   const k = Math.min(reps, n);
   if (stage === 1) return sorted.slice(0, k);
@@ -56,6 +85,7 @@ export function synthesisQuestion(c: CaseFile, stage: Stage): FollowUp | undefin
       items.push({ ...d, id: `mnm-${d.id}`, label: `Must not miss: ${d.label}`, weight: 'redflag', reasonMatch: undefined });
   }
   return {
+    label: 'Commit and defend',
     prompt:
       stage === 3
         ? 'Commit and defend: your leading diagnosis with the features from this history that support it, then the must-not-miss diagnosis you still need to exclude. One per line.'
@@ -65,19 +95,36 @@ export function synthesisQuestion(c: CaseFile, stage: Stage): FollowUp | undefin
   };
 }
 
+/** Viva questions for this stage: recall first, then "why" with examiner probes, then data and what-ifs */
+export function vivaQuestions(c: CaseFile, stage: Stage): FollowUp[] {
+  return (c.viva ?? [])
+    .filter((q) => q.tier <= stage)
+    .sort((a, b) => a.tier - b.tier)
+    .flatMap((q) => {
+      const main: FollowUp = { ...q, label: q.label ?? VIVA_TIERS[q.tier] };
+      return stage >= 2 && q.probe ? [main, { ...q.probe, id: undefined, label: q.probe.label ?? 'Examiner follow-up' }] : [main];
+    });
+}
+
+export const followUpsFor = (c: CaseFile, sectionId: string): FollowUp[] => {
+  const fu = c.followUps?.[sectionId];
+  return fu ? (Array.isArray(fu) ? fu : [fu]) : [];
+};
+
 /**
- * Extra questions asked after a block, in order. In a combined drill, the
- * synthesis and twist come only after the last block.
+ * Extra questions asked after a block, in order: the case's follow-ups for that
+ * block, then the stage's own question (commit-and-defend after histories, a
+ * twist after reasoning). In a combined drill, those come only after the last block.
+ * A viva block is nothing but questions.
  */
 export function extraQuestions(section: SectionDef, c: CaseFile, stage: Stage, isLastStep = true): FollowUp[] {
-  const out: FollowUp[] = [];
+  if (section.kind === 'viva') return vivaQuestions(c, stage);
+  const out: FollowUp[] = [...followUpsFor(c, section.id)];
   if (section.kind === 'interview') {
-    const fu = c.followUps?.[section.id];
-    if (fu) out.push(fu);
     const syn = isLastStep ? synthesisQuestion(c, stage) : undefined;
     if (syn) out.push(syn);
-  } else if (stage === 3 && isLastStep && c.twist) {
-    out.push({ ...c.twist, prompt: `Twist — ${c.twist.prompt}` });
+  } else if (section.kind === 'reasoning' && stage === 3 && isLastStep && c.twist) {
+    out.push({ ...c.twist, label: 'Challenge · new information' });
   }
   return out;
 }

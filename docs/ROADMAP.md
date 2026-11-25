@@ -2,16 +2,18 @@
 
 The product plan (design, content, strategy, revenue) is kept in a shared doc. This file covers the engineering side only.
 
-## Phase 1 — MVP (this repo, v0.2) ✅
+## Phase 1 — MVP (this repo, v0.3) ✅
 
 - Expo app for iOS, Android and web from one codebase
 - Sets × reps drill loop with three assistance levels and adaptive fading
 - Offline keyword matcher and scripted patients
 - Scoring: accuracy, independence, level, speed, red flags
 - Progress dashboard; teaching library
-- 3 presentations, 10 patients, 20 single-block drills + 11 combined drills, 12 teaching cards
+- 3 presentations, 10 patients, 23 single-block drills + 11 combined drills, 1 deep dive (4 sets, 5 patients), 13 teaching cards
 - Challenge stages (Foundation → Application → Challenge), combined drills, and a placement/exam calendar that steers recommendations
-- Engine and content tests (64)
+- Viva blocks (recall → why with probes → data), viva flashcards with spaced review
+- Deep dives by UKMLA condition: purpose-tagged history, management ladder, counselling with a patient who asks back, PSA-style prescribing (first: depression → sertraline)
+- Engine and content tests (99)
 
 ## Phase 2 — AI patient and AI feedback
 

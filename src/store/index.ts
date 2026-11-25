@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { programKey } from '../content';
 import type { AssistLevel, SectionKind } from '../content/types';
 import type { CalendarEvent } from '../engine/calendar';
+import { cardKey, type CardState, gradeCard } from '../engine/flashcards';
 import { isMastered, nextDueAt, nextLevel } from '../engine/progression';
 import type { Stage } from '../engine/stages';
 import { average, type Coverage } from '../engine/scoring';
@@ -42,6 +43,10 @@ export interface RepResult {
   distractors: string[];
   transcript?: TranscriptLine[];
   entries?: EntryLine[];
+  /** Viva flashcard results: one per question that has an id */
+  cards?: { qid: string; accuracy: number }[];
+  /** Purpose tags the student chose, by item id (deep dive history sets) */
+  tags?: Record<string, string>;
 }
 
 export interface SetResult {
@@ -73,6 +78,9 @@ interface AppState {
   sets: SetResult[];
   programs: Record<string, ProgramState>;
   events: CalendarEvent[];
+  /** Viva flashcards, keyed by presentation|case|question */
+  vivaCards: Record<string, CardState>;
+  gradeCards: (results: { key: string; accuracy: number }[]) => void;
   addEvent: (e: Omit<CalendarEvent, 'id'>) => void;
   removeEvent: (id: string) => void;
   completeSet: (s: Omit<SetResult, 'id' | 'nextLevel' | 'points' | 'accuracy' | 'independence'>) => SetResult;
@@ -87,6 +95,13 @@ export const useStore = create<AppState>()(
       sets: [],
       programs: {},
       events: [],
+      vivaCards: {},
+      gradeCards: (results) => {
+        const now = Date.now();
+        const cards = { ...get().vivaCards };
+        for (const r of results) cards[r.key] = gradeCard(cards[r.key], r.accuracy, now);
+        set({ vivaCards: cards });
+      },
       addEvent: (e) =>
         set({ events: [...get().events, { ...e, id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}` }] }),
       removeEvent: (id) => set({ events: get().events.filter((e) => e.id !== id) }),
@@ -107,7 +122,18 @@ export const useStore = create<AppState>()(
           accuracy,
           independence,
         };
+        // Every viva question answered in this set updates its flashcard
+        const cards = { ...get().vivaCards };
+        const visit = (r: RepResult) => {
+          for (const c of r.cards ?? []) {
+            const k = cardKey(s.presentationId, r.caseId, c.qid);
+            cards[k] = gradeCard(cards[k], c.accuracy, s.finishedAt);
+          }
+          r.steps?.forEach(visit);
+        };
+        s.reps.forEach(visit);
         set({
+          vivaCards: cards,
           sets: [...get().sets, result],
           programs: {
             ...get().programs,
@@ -123,19 +149,21 @@ export const useStore = create<AppState>()(
         });
         return result;
       },
-      resetAll: () => set({ sets: [], programs: {} }),
+      resetAll: () => set({ sets: [], programs: {}, vivaCards: {} }),
     }),
     {
       name: 'history-drills-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       // v1 → v2: sets gained a challenge stage; calendar events added
+      // v2 → v3: viva flashcards
       migrate: (persisted, version) => {
         const st = (persisted ?? {}) as Partial<AppState>;
         if (version < 2) {
           st.sets = (st.sets ?? []).map((x) => ({ ...x, stage: (x as SetResult).stage ?? 1 }));
           st.events = st.events ?? [];
         }
+        if (version < 3) st.vivaCards = st.vivaCards ?? {};
         return st as AppState;
       },
     },

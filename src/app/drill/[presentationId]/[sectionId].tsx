@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { success } from '@/components/drill/shared';
 import { StepRep } from '@/components/drill/StepRep';
 import { Button, Card, Chip, LevelBadge, mmss, pct, Ring, Row, TopBar, Txt } from '@/components/ui';
-import { getDrill, LEVEL_NAMES, presentationById, programKey } from '@/content';
-import { pickCasesForStage, STAGES, stageFor } from '@/engine/stages';
+import { casesForDrill, getDrill, LEVEL_NAMES, presentationById, programKey } from '@/content';
+import { pickCasesForStage, stageBlurb, STAGES, stageFor } from '@/engine/stages';
 import { defaultProgram, type RepResult, useStore } from '@/store';
 import { MAX_WIDTH, space, type, useTheme } from '@/theme';
 
@@ -32,7 +32,7 @@ export default function DrillScreen() {
   const level = useRef(program.level).current;
   const setNumber = useRef(program.setsCompleted + 1).current;
   const stage = useRef(stageFor(program.setsCompleted)).current;
-  const cases = useMemo(() => (p ? pickCasesForStage(p, stage, program.setsCompleted) : []), [p]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cases = useMemo(() => (p && drill ? pickCasesForStage(casesForDrill(p, drill), stage, program.setsCompleted) : []), [p]); // eslint-disable-line react-hooks/exhaustive-deps
   const startedAt = useRef(Date.now()).current;
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -126,7 +126,12 @@ export default function DrillScreen() {
               </View>
             ))}
           </Row>
-          <Txt color="hero">{info.blurb}</Txt>
+          <Txt color="hero">
+            {stageBlurb(
+              stage,
+              drill.sections.map((x) => x.kind),
+            )}
+          </Txt>
           <Txt color="heroSoft">{LEVEL_COPY[level]}</Txt>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
             {cases.map((c, i) => (
@@ -162,8 +167,8 @@ export default function DrillScreen() {
         )}
 
         <Txt style={type.small} color="faint">
-          Target: {mmss(drill.targetSeconds * info.timeFactor)} per rep. If a question isn’t recognised, rephrase it — matching is
-          keyword-based in this version.
+          Target: {mmss(drill.targetSeconds * info.timeFactor)} per rep. Matching is keyword-based in this version: if something isn’t
+          recognised, rephrase it.
         </Txt>
         <Button label="Start rep 1" icon="play" onPress={() => setPhase('rep')} />
       </>,

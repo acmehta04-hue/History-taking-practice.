@@ -217,7 +217,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, maxWidth: '100%' })}>
       {content}
     </Pressable>
   );

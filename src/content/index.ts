@@ -1,9 +1,9 @@
+import { depressionDive } from './deepdives/depression';
 import { library, libraryById } from './library';
 import { abdominalPain } from './presentations/abdominal-pain';
 import { lowMood } from './presentations/low-mood';
 import { palpitations } from './presentations/palpitations';
-import type { CaseFile, ChecklistItem, Presentation, SectionDef, Specialty } from './types';
-import type { ComboDef } from './types';
+import type { CaseFile, ChecklistItem, ComboDef, FollowUp, PlannedDeepDive, Presentation, SectionDef, Specialty } from './types';
 
 export * from './types';
 export { library, libraryById };
@@ -47,7 +47,18 @@ export const specialties: Specialty[] = [
 
 export const presentations: Presentation[] = [abdominalPain, palpitations, lowMood];
 
-export const presentationById: Record<string, Presentation> = Object.fromEntries(presentations.map((p) => [p.id, p]));
+/** Deep dives: a UKMLA condition walked from history to prescribing */
+export const deepDives: Presentation[] = [depressionDive];
+
+export const plannedDeepDives: PlannedDeepDive[] = [
+  { condition: 'Bipolar disorder', treatment: 'Lithium', specialtyId: 'psych' },
+  { condition: 'Atrial fibrillation', treatment: 'Apixaban and bisoprolol', specialtyId: 'cardio' },
+  { condition: 'Graves’ disease', treatment: 'Carbimazole', specialtyId: 'cardio' },
+  { condition: 'Crohn’s disease', treatment: 'Prednisolone, then azathioprine', specialtyId: 'gastro' },
+];
+
+/** Presentations and deep dives share one lookup (drills, summaries and the store key by id) */
+export const presentationById: Record<string, Presentation> = Object.fromEntries([...presentations, ...deepDives].map((p) => [p.id, p]));
 
 export const specialtyById: Record<string, Specialty> = Object.fromEntries(specialties.map((s) => [s.id, s]));
 
@@ -85,6 +96,8 @@ export interface Drill {
   targetSeconds: number;
   flow: string[];
   teach: string[];
+  /** Restricts which patients appear (deep dive sets) */
+  caseIds?: string[];
 }
 
 function singleDrill(s: SectionDef): Drill {
@@ -98,6 +111,7 @@ function singleDrill(s: SectionDef): Drill {
     targetSeconds: s.targetSeconds,
     flow: s.flow ?? [],
     teach: s.teach ?? [],
+    caseIds: s.caseIds,
   };
 }
 
@@ -134,4 +148,28 @@ export function singlesFor(p: Presentation): Drill[] {
 
 export function combosFor(p: Presentation): Drill[] {
   return p.combos.map((c) => comboDrill(p, c));
+}
+
+/** The patients a drill draws from */
+export function casesForDrill(p: Presentation, d: Drill): CaseFile[] {
+  return d.caseIds ? p.cases.filter((c) => d.caseIds!.includes(c.id)) : p.cases;
+}
+
+/** Find a flashcard question (a viva question or a follow-up with an id) */
+export function findQuestion(
+  presentationId: string,
+  caseId: string,
+  questionId: string,
+): { p: Presentation; c: CaseFile; q: FollowUp } | undefined {
+  const p = presentationById[presentationId];
+  const c = p?.cases.find((x) => x.id === caseId);
+  if (!p || !c) return undefined;
+  const viva = c.viva?.find((q) => q.id === questionId);
+  if (viva) return { p, c, q: viva };
+  for (const fu of Object.values(c.followUps ?? {})) {
+    const list = Array.isArray(fu) ? fu : [fu];
+    const q = list.find((x) => x.id === questionId);
+    if (q) return { p, c, q };
+  }
+  return undefined;
 }

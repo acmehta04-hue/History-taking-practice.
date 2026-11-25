@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import type { AssistLevel, CaseFile, SectionDef } from '../../content/types';
+import { cardResults } from '../../engine/flashcards';
 import type { Coverage } from '../../engine/scoring';
 import { extraQuestions, type Stage } from '../../engine/stages';
 import type { EntryLine, RepResult } from '../../store';
@@ -49,7 +50,7 @@ export function ReasoningRep({
       distractors: [...o.distractors, ...extraPicked],
       entries: o.entries as EntryLine[],
     });
-    onDone({ ...result, sectionId: section.id });
+    onDone({ ...result, sectionId: section.id, cards: cardResults(extras, extraCovered) });
   };
 
   if (main && extras.length) {
@@ -83,7 +84,7 @@ export function ReasoningRep({
           <Txt style={type.heading}>
             {patientCase.patient.name}, {patientCase.patient.age}
           </Txt>
-          <Txt>{patientCase.summary}</Txt>
+          <Txt>{patientCase.summaries?.[section.id] ?? patientCase.summary}</Txt>
         </Card>
 
         <ReasoningPanel
@@ -92,7 +93,7 @@ export function ReasoningRep({
           distractors={patientCase.distractors?.[section.id]}
           level={level}
           prompt={section.prompt ?? 'One item per line.'}
-          finishLabel={extras.length ? 'Next: the twist' : 'Finish rep'}
+          finishLabel={extras.length ? 'Next question' : 'Finish rep'}
           onFinish={(o) => (extras.length ? setMain(o) : finish(o))}
         />
       </View>
