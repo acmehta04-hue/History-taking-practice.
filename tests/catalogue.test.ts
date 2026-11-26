@@ -16,6 +16,9 @@ import {
 import { areaDrills, spotDrillFor } from '../src/content/catalogue/drills';
 import { getDrill, presentationById, presentations } from '../src/content';
 import { drugProfiles } from '../src/content/drugs';
+import { drugDrills } from '../src/content';
+import { quizExtras, quizKeys } from '../src/content/quiz';
+import { scoreRep } from '../src/engine/scoring';
 import type { CaseFile, FollowUp, ReasonItem } from '../src/content/types';
 import { matchesAny, matchEntry, normalise } from '../src/engine/matcher';
 import { casesForSet, extraQuestions, pickRotating } from '../src/engine/stages';
@@ -222,5 +225,65 @@ describe('drug catalogue', () => {
         drugCatalogue.some((d) => d.id === p.id),
         `${p.id} is not in the catalogue`,
       );
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* The Guided quiz                                                      */
+/* ------------------------------------------------------------------ */
+
+describe('Guided quiz', () => {
+  const written = [...presentations.filter((p) => p.kind !== 'area'), ...drugDrills];
+  const reasoning = written.flatMap((p) =>
+    p.sections
+      .filter((s) => s.kind === 'reasoning')
+      .flatMap((s) => p.cases.filter((c) => c.reasoning[s.id]).map((c) => ({ p, s, c, items: c.reasoning[s.id] }))),
+  );
+
+  it('every quiz option key is a real case and section, owned by one drill', () => {
+    for (const { caseId, sectionId } of quizKeys()) {
+      const owners = written.filter((p) => p.cases.some((c) => c.id === caseId && c.reasoning[sectionId]));
+      assert.equal(owners.length, 1, `${caseId}/${sectionId}`);
+    }
+  });
+
+  it('a quiz-only wrong option is never one of the model answers', () => {
+    const negated = /^(withhold|avoid|stop|delay|wait|don|do not|no )/i;
+    const problems: string[] = [];
+    for (const { s, c, items } of reasoning) {
+      const all = [...(c.distractors?.[s.id] ?? []), ...quizExtras(c.id, s.id)];
+      const labels = all.map((d) => normalise(d.label));
+      assert.equal(new Set(labels).size, labels.length, `${c.id}/${s.id}: an option is listed twice`);
+      for (const d of quizExtras(c.id, s.id)) {
+        if (items.some((i) => normalise(i.label) === normalise(d.label))) problems.push(`${c.id}/${s.id}: ${d.label}`);
+        // diagnoses and tests are names, so the matcher can check them too
+        if (['ddx', 'ix'].includes(s.id) && !negated.test(d.label)) {
+          const hit = matchEntry(d.label, items).items.map((i) => i.id);
+          if (hit.length) problems.push(`${c.id}/${s.id}: "${d.label}" matches model answer ${hit}`);
+        }
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+
+  it('every quiz has at least 3 wrong options, so ticking everything fails', () => {
+    const problems: string[] = [];
+    for (const { s, c, items } of reasoning) {
+      if (s.single) continue;
+      const wrong = [...(c.distractors?.[s.id] ?? []), ...quizExtras(c.id, s.id)];
+      if (wrong.length < 3) problems.push(`${c.id}/${s.id}: only ${wrong.length} wrong options`);
+      const covered = Object.fromEntries(items.map((i) => [i.id, { method: 'suggested' as const }]));
+      const tickAll = scoreRep({
+        items: items.map((i) => ({ id: i.id, weight: i.weight })),
+        covered,
+        level: 1,
+        durationSec: 0,
+        targetSeconds: 0,
+        distractorsPicked: wrong.length,
+        quiz: true,
+      });
+      if (tickAll.accuracy >= 0.8) problems.push(`${c.id}/${s.id}: ticking everything scores ${Math.round(tickAll.accuracy * 100)}%`);
+    }
+    assert.deepEqual(problems, []);
   });
 });

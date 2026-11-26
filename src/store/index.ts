@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { programKey } from '../content';
+import { getDrill, isQuiz, programKey } from '../content';
 import type { AssistLevel, SectionKind } from '../content/types';
 import type { CalendarEvent } from '../engine/calendar';
 import { cardKey, type CardState, gradeCard } from '../engine/flashcards';
@@ -111,7 +111,9 @@ export const useStore = create<AppState>()(
         const accuracy = average(s.reps.map((r) => r.accuracy));
         const independence = average(s.reps.map((r) => r.independence));
         const points = s.reps.reduce((a, r) => a + r.points, 0);
-        const lvl = nextLevel(s.level, accuracy, independence);
+        const drill = getDrill(s.presentationId, s.sectionId);
+        const quiz = !!drill && isQuiz(drill, s.level);
+        const lvl = nextLevel(s.level, accuracy, independence, quiz);
         const masteredStreak = isMastered(s.level, accuracy) ? prev.masteredStreak + 1 : 0;
         const setsCompleted = prev.setsCompleted + 1;
         const result: SetResult = {

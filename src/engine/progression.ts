@@ -17,8 +17,14 @@ export const MASTERY_ACCURACY = 0.85;
 
 const DAY = 24 * 60 * 60 * 1000;
 
-export function nextLevel(level: AssistLevel, accuracy: number, independence: number): AssistLevel {
-  if (accuracy >= LEVEL_UP.accuracy && independence >= LEVEL_UP.independence && level < 3) {
+/**
+ * quiz: the set was a multiple-choice quiz (Guided reasoning or viva). Every
+ * answer there is picked from options, so independence can't be earned:
+ * 80% right is enough to move on to answering in your own words.
+ */
+export function nextLevel(level: AssistLevel, accuracy: number, independence: number, quiz = false): AssistLevel {
+  const independent = independence >= LEVEL_UP.independence || (quiz && level === 1);
+  if (accuracy >= LEVEL_UP.accuracy && independent && level < 3) {
     return (level + 1) as AssistLevel;
   }
   if (accuracy < LEVEL_DOWN.accuracy && level > 1) return (level - 1) as AssistLevel;

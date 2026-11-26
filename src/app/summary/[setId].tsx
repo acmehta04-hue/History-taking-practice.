@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, type IconName, LevelBadge, mmss, pct, Row, Screen, Stat, TopBar, Txt } from '@/components/ui';
-import { caseTitle, checklistFor, getCase, getDrill, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
+import { caseTitle, checklistFor, getCase, getDrill, isQuiz, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
 import {
   type CaseFile,
   type ChecklistItem,
@@ -17,7 +17,8 @@ import { ResultsView } from '@/components/results';
 import { PASS_MARK } from '@/engine/flashcards';
 import { relativeDue } from '@/engine/recommend';
 import type { Method } from '@/engine/scoring';
-import { extraQuestions, type Stage, stageBlurb, STAGES, stageFor, xid } from '@/engine/stages';
+import { quizExtras } from '@/content/quiz';
+import { extraQuestions, type Stage, stageBlurb, STAGES, stageFor, wrongLabelFor, xid } from '@/engine/stages';
 import { type RepResult, useStore } from '@/store';
 import { space, type, useTheme } from '@/theme';
 
@@ -49,12 +50,17 @@ export default function Summary() {
   const scriptSection = drill.sections.find((x) => x.kind === 'interview' || x.kind === 'counsel');
   const duration = set.reps.reduce((a, r) => a + r.durationSec, 0);
   const toRetry = missedCards(set.reps);
+  const quiz = isQuiz(drill, set.level);
   const levelMsg =
     set.nextLevel > set.level
-      ? `Guidance fades next set: L${set.nextLevel} ${LEVEL_NAMES[set.nextLevel]}.`
+      ? quiz
+        ? `Quiz passed. Next set you answer in your own words, in a chat with the examiner (L${set.nextLevel} ${LEVEL_NAMES[set.nextLevel]}).`
+        : `Guidance fades next set: L${set.nextLevel} ${LEVEL_NAMES[set.nextLevel]}.`
       : set.nextLevel < set.level
         ? `More support next set: back to L${set.nextLevel} ${LEVEL_NAMES[set.nextLevel]}. That’s normal: rebuild, then fade again.`
-        : `Same level next set. To move up you need 80% accuracy and 80% independence.`;
+        : quiz
+          ? `Same level next set. Score 80% in the quiz to move on to typing your answers.`
+          : `Same level next set. To move up you need 80% accuracy and 80% independence.`;
   const scriptCase = getCase(p.id, set.reps[0].caseId)!;
 
   // Deep dives: point to the next set in the sequence
@@ -97,7 +103,11 @@ export default function Summary() {
 
       <Row gap={space.md} style={{ alignItems: 'stretch' }}>
         <Stat label="Accuracy" value={pct(set.accuracy)} sub="of the model answer" />
-        <Stat label="Independence" value={pct(set.independence)} sub="covered without help" />
+        {quiz ? (
+          <Stat label="Format" value="Quiz" sub="80% moves you on to typing" />
+        ) : (
+          <Stat label="Independence" value={pct(set.independence)} sub="covered without help" />
+        )}
       </Row>
 
       {toRetry ? (
@@ -224,7 +234,7 @@ function RepCard({ r, sections, stage, c, index }: { r: RepResult; sections: Sec
             </Txt>
             <Txt style={type.heading}>{c.diagnosis}</Txt>
             <Txt style={type.small} color="soft">
-              {pct(r.accuracy)} accuracy · {pct(r.independence)} independent · {r.points} pts
+              {pct(r.accuracy)} accuracy{isQuiz({ sections }, r.level) ? '' : ` · ${pct(r.independence)} independent`} · {r.points} pts
             </Txt>
           </View>
           <Icon name={open ? 'chevron-up' : 'chevron-down'} />
@@ -275,8 +285,14 @@ function RepDetails({ r, section, c, stage, isLast }: { r: RepResult; section: S
   const extras = extraQuestions(section, c, stage, isLast);
   const missed = base.filter((i) => !r.covered[i.id]);
   const coveredBase = base.filter((i) => r.covered[i.id]);
-  const noReason = base.filter((i) => 'reasonMatch' in i && i.reasonMatch && r.covered[i.id] && !r.covered[i.id].reason);
-  const distractorDefs = [...Object.values(c.distractors ?? {}).flat(), ...extras.flatMap((q) => q.distractors ?? [])];
+  // Quiz answers (Guided) can't carry a reason, so only ask for one after typed answers
+  const noReason =
+    r.level === 1 ? [] : base.filter((i) => 'reasonMatch' in i && i.reasonMatch && r.covered[i.id] && !r.covered[i.id].reason);
+  const distractorDefs = [
+    ...Object.values(c.distractors ?? {}).flat(),
+    ...quizExtras(c.id, section.id),
+    ...extras.flatMap((q) => q.distractors ?? []),
+  ];
   const missedLabel = section.kind === 'counsel' ? 'say it like this' : section.kind === 'interview' ? 'ask it like this' : 'model answer';
 
   return (
@@ -349,7 +365,7 @@ function RepDetails({ r, section, c, stage, isLast }: { r: RepResult; section: S
       {r.distractors.length ? (
         <View style={{ gap: space.sm }}>
           <Txt style={type.tiny} color="faint">
-            {section.wrongLabel ?? 'Not first line'}
+            {wrongLabelFor(section)}
           </Txt>
           {r.distractors.map((d, i) => (
             <Txt key={`${d}-${i}`} style={type.small}>

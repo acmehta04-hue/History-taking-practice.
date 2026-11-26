@@ -65,6 +65,8 @@ export function buildRepResult(args: {
   unmatched?: string[];
   transcript?: TranscriptLine[];
   entries?: EntryLine[];
+  /** Answers were picked from a multiple-choice quiz */
+  quiz?: boolean;
 }): RepResult {
   const s = scoreRep({
     items: args.items,
@@ -73,6 +75,7 @@ export function buildRepResult(args: {
     durationSec: args.durationSec,
     targetSeconds: args.targetSeconds,
     distractorsPicked: args.distractors?.length ?? 0,
+    quiz: args.quiz,
   });
   return {
     caseId: args.caseId,

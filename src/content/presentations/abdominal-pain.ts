@@ -1038,7 +1038,7 @@ export const abdominalPain: Presentation = {
             'ovarian',
             'Ovarian torsion / ruptured ovarian cyst',
             'core',
-            ['ovar', 'cyst', 'torsion'],
+            ['ovar', '\\bcyst', 'torsion'],
             'Sudden unilateral pain — ultrasound distinguishes.',
             ['sudden', 'unilateral|one side'],
           ),

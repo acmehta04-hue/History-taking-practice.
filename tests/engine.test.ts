@@ -173,6 +173,26 @@ describe('progression', () => {
     assert.equal(nextLevel(3, 0.4, 1), 2);
     assert.equal(nextLevel(3, 0.95, 1), 3);
   });
+  it('in a quiz, ticking every option is not full marks', () => {
+    const items = [
+      { id: 'a', weight: 'core' as const },
+      { id: 'b', weight: 'core' as const },
+      { id: 'c', weight: 'redflag' as const },
+    ];
+    const covered = { a: { method: 'suggested' as const }, b: { method: 'suggested' as const }, c: { method: 'suggested' as const } };
+    const base = { items, covered, level: 1 as const, durationSec: 0, targetSeconds: 0 };
+    assert.equal(scoreRep({ ...base, distractorsPicked: 0, quiz: true }).accuracy, 1);
+    assert.ok(scoreRep({ ...base, distractorsPicked: 3, quiz: true }).accuracy < 0.5);
+    // typed answers keep the old rule: wrong entries cost points, not accuracy
+    assert.equal(scoreRep({ ...base, distractorsPicked: 3 }).accuracy, 1);
+  });
+  it('a Guided quiz moves up on accuracy alone, because picked answers earn no independence', () => {
+    assert.equal(nextLevel(1, 0.85, 0, true), 2);
+    assert.equal(nextLevel(1, 0.85, 0), 1);
+    assert.equal(nextLevel(1, 0.6, 0, true), 1);
+    // from Prompted up, the chat is typed, so independence counts again
+    assert.equal(nextLevel(2, 0.9, 0.5, true), 2);
+  });
   it('rotates patients between sets', () => {
     assert.notEqual(pickCases(abdominalPain, 0)[0].id, pickCases(abdominalPain, 1)[0].id);
     assert.equal(pickCases(abdominalPain, 0).length, 3);

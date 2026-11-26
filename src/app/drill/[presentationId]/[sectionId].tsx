@@ -6,17 +6,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { success } from '@/components/drill/shared';
 import { StepRep } from '@/components/drill/StepRep';
 import { Button, Card, Chip, LevelBadge, mmss, pct, Ring, Row, TopBar, Txt } from '@/components/ui';
-import { caseTag, casesForDrill, getDrill, LEVEL_NAMES, presentationById, programKey } from '@/content';
+import { caseTag, casesForDrill, getDrill, isQuiz, LEVEL_NAMES, presentationById, programKey } from '@/content';
 import { casesForSet, stageBlurb, STAGES, stageFor } from '@/engine/stages';
 import { defaultProgram, type RepResult, useStore } from '@/store';
 import { MAX_WIDTH, space, type, useTheme } from '@/theme';
 
 type Phase = 'intro' | 'rep' | 'repDone';
 
+/** What each level looks like: history reps are a patient interview, reasoning reps a quiz then a chat */
 const LEVEL_COPY = {
-  1: 'Guided: the framework and suggested questions are on screen. Tapping a suggestion earns half credit.',
-  2: 'Prompted: progress per framework group, plus hints when you need them.',
-  3: 'Independent: a blank page and the clock. Hints still exist, but they cost points.',
+  interview: {
+    1: 'Guided: the framework and suggested questions are on screen. Tapping a suggestion earns half credit.',
+    2: 'Prompted: progress per framework group, plus hints when you need them.',
+    3: 'Independent: a blank page and the clock. Hints still exist, but they cost points.',
+  },
+  reasoning: {
+    1: 'Guided: a multiple-choice quiz. Tick every option that belongs, then check. Score 80% to move on to your own words.',
+    2: 'Prompted: a chat with the examiner. Type each point and get feedback as you go, with hints if you need them.',
+    3: 'Independent: the examiner just listens. Type your answer against the clock; hints cost points.',
+  },
 } as const;
 
 /** Route param is called sectionId for history, but it can be a block or a combined drill id */
@@ -133,7 +141,7 @@ export default function DrillScreen() {
             ))}
           </Row>
           <Txt color="hero">{stageBlurb(stage, drill.sections)}</Txt>
-          <Txt color="heroSoft">{LEVEL_COPY[level]}</Txt>
+          <Txt color="heroSoft">{LEVEL_COPY[isQuiz(drill, 1) ? 'reasoning' : 'interview'][level]}</Txt>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
             {cases.map((c, i) => (
               <View
@@ -191,7 +199,7 @@ export default function DrillScreen() {
           </Ring>
           <Txt style={type.title}>+{r.points} pts</Txt>
           <Row gap={6} style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Chip label={`Independence ${pct(r.independence)}`} />
+            {isQuiz(drill, level) ? <Chip label="Quiz" /> : <Chip label={`Independence ${pct(r.independence)}`} />}
             <Chip label={`Time ${mmss(r.durationSec)}`} />
             {r.speedBonus ? <Chip label={`Speed +${r.speedBonus}`} tone="accent" /> : null}
             {r.redFlagsMissed.length ? (

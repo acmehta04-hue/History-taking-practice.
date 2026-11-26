@@ -157,7 +157,7 @@ export function InterviewRep({
   const finish = (extraCovered: Record<string, Coverage> = {}, distractors: string[] = []) => {
     const all = [
       ...items.map((i) => ({ id: i.id, weight: i.weight, hasReason: !!section.tagPurpose && !!i.purpose })),
-      ...extraScorable(extras),
+      ...extraScorable(extras, level),
     ];
     const result = buildRepResult({
       caseId: patientCase.id,

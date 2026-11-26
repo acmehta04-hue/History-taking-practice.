@@ -134,6 +134,10 @@ function comboDrill(p: Presentation, c: ComboDef): Drill {
   };
 }
 
+/** Answer-only drills (reasoning, viva) run as a multiple-choice quiz at Guided level */
+export const isQuiz = (drill: { sections: SectionDef[] }, level: number) =>
+  level === 1 && drill.sections.every((x) => x.kind === 'reasoning' || x.kind === 'viva');
+
 export function getDrill(presentationId: string, drillId: string): Drill | undefined {
   const p = presentationById[presentationId];
   if (!p) return undefined;

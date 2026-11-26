@@ -123,6 +123,8 @@ export interface SectionDef {
   guidedOnlyDistractors?: boolean;
   /** Reasoning sections: example answer shown in the empty input */
   placeholder?: string;
+  /** Reasoning sections: the question as a multiple-choice stem at Guided level */
+  quizPrompt?: string;
   /** What each stage adds, when it differs from the defaults (syllabus drills have topics, not patients) */
   stageNotes?: Record<1 | 2 | 3, string>;
   /** Every set runs its caseIds in this order (a patient's journey) */

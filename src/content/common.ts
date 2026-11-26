@@ -420,7 +420,7 @@ export const IX: Record<string, { label: string; match: string[]; category: stri
   },
   coeliac: {
     label: 'Coeliac serology (tTG-IgA)',
-    match: ['coeliac|celiac', 'ttg', 'tissue transglutaminase', 'ema\\b'],
+    match: ['coeliac|celiac', 'ttg', 'tissue transglutaminase', '\\bema\\b'],
     category: 'Bloods',
   },
   lipids: { label: 'Lipids', match: ['lipid', 'cholesterol'], category: 'Bloods' },

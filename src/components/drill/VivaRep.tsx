@@ -56,11 +56,12 @@ export function VivaRep({
       caseId: patientCase.id,
       kind: 'viva',
       level,
-      items: extraScorable(extras),
+      items: extraScorable(extras, level),
       covered,
       durationSec: finalSeconds(),
       targetSeconds,
       distractors,
+      quiz: level === 1,
     });
     onDone({ ...result, sectionId: section.id, cards: cardResults(extras, covered) });
   };

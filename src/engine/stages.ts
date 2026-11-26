@@ -23,6 +23,14 @@ export const STAGES: Record<Stage, { name: string; blurb: string; timeFactor: nu
 };
 
 /** What a stage changes, in words that fit the drill (a viva block levels up differently from a history) */
+/** How a wrong option is labelled: a differential that doesn't fit isn't "not first line" */
+export function wrongLabelFor(section: SectionDef): string {
+  if (section.wrongLabel) return section.wrongLabel;
+  if (section.id === 'ddx' || section.id === 'sprint') return 'Doesn’t fit';
+  if (section.id === 'ix') return 'Not needed here';
+  return 'Not first line';
+}
+
 export function stageBlurb(stage: Stage, sections: SectionDef[]): string {
   const notes = sections[0]?.stageNotes;
   if (notes && sections.length === 1) return notes[stage];

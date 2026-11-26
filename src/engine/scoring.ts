@@ -31,6 +31,8 @@ export interface ScoreInput {
   targetSeconds: number;
   /** Count of Guided-mode distractors the student picked */
   distractorsPicked?: number;
+  /** Multiple-choice quiz: each wrong option ticked costs a core item's worth of accuracy, so "tick everything" fails */
+  quiz?: boolean;
 }
 
 export interface RepScore {
@@ -50,9 +52,10 @@ const clamp = (n: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, n));
  * Points = 100 × accuracy × (0.5 + 0.5 × independence) × level multiplier
  *        + speed bonus (up to 10, only if accuracy ≥ 60%)
  *        − 5 per missed red flag − 2 per distractor picked
+ * In a quiz, each wrong option ticked also takes a core item's worth off accuracy.
  */
 export function scoreRep(input: ScoreInput): RepScore {
-  const { items, covered, level, durationSec, targetSeconds, distractorsPicked = 0 } = input;
+  const { items, covered, level, durationSec, targetSeconds, distractorsPicked = 0, quiz = false } = input;
 
   let max = 0;
   let raw = 0;
@@ -77,6 +80,7 @@ export function scoreRep(input: ScoreInput): RepScore {
     indepDen += w;
   }
 
+  if (quiz) raw = Math.max(0, raw - WEIGHT_VALUE.core * distractorsPicked);
   const accuracy = max > 0 ? raw / max : 0;
   const independence = indepDen > 0 ? indepNum / indepDen : 0;
   const speedBonus = accuracy >= 0.6 && targetSeconds > 0 ? Math.round(10 * clamp(1 - durationSec / targetSeconds)) : 0;
