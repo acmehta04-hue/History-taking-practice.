@@ -1,3 +1,5 @@
+import { areaDrillFor, areaDrills, spotDrillFor } from './catalogue/drills';
+import { areas } from './catalogue/areas';
 import { depressionDive } from './deepdives/depression';
 import { library, libraryById } from './library';
 import { abdominalPain } from './presentations/abdominal-pain';
@@ -6,45 +8,27 @@ import { palpitations } from './presentations/palpitations';
 import type { CaseFile, ChecklistItem, ComboDef, FollowUp, PlannedDeepDive, Presentation, SectionDef, Specialty } from './types';
 
 export * from './types';
-export { library, libraryById };
+export {
+  catalogueProblems,
+  catalogueStats,
+  conditionById,
+  conditions,
+  conditionsInArea,
+  inSentence,
+  presentationsInArea,
+  presentationsWithCondition,
+  syllabusPresentationById,
+  syllabusPresentations,
+  testById,
+  tests,
+  weightIn,
+} from './catalogue';
+export { library, libraryById, areaDrills, areaDrillFor, spotDrillFor };
 
-/**
- * Specialties follow the UKMLA content map areas. "planned" lists presentations
- * from the content map that are not written yet — they show as "coming soon".
- */
-export const specialties: Specialty[] = [
-  {
-    id: 'gastro',
-    title: 'Gastro & surgery',
-    tone: 'butter',
-    icon: 'nutrition-outline',
-    planned: ['Change in bowel habit', 'Jaundice', 'Rectal bleeding', 'Dysphagia', 'Vomiting'],
-  },
-  {
-    id: 'cardio',
-    title: 'Cardiology',
-    tone: 'coral',
-    icon: 'heart-outline',
-    planned: ['Chest pain', 'Breathlessness', 'Syncope', 'Peripheral oedema'],
-  },
-  {
-    id: 'psych',
-    title: 'Psychiatry',
-    tone: 'lilac',
-    icon: 'happy-outline',
-    planned: ['Anxiety', 'Self-harm', 'Elated mood', 'Hallucinations', 'Substance misuse', 'Memory loss'],
-  },
-  { id: 'resp', title: 'Respiratory', tone: 'sky', icon: 'cloud-outline', planned: ['Cough', 'Wheeze', 'Haemoptysis'] },
-  { id: 'neuro', title: 'Neurology', tone: 'mint', icon: 'flash-outline', planned: ['Headache', 'Dizziness', 'Seizures', 'Limb weakness'] },
-  {
-    id: 'womens',
-    title: 'Women’s health',
-    tone: 'rose',
-    icon: 'flower-outline',
-    planned: ['Pelvic pain', 'Bleeding in pregnancy', 'Menstrual problems'],
-  },
-];
+/** The 24 UKMLA areas of clinical practice. Older code calls them specialties. */
+export const specialties: Specialty[] = areas;
 
+/** Hand-written presentations: full history drills with scripted patients */
 export const presentations: Presentation[] = [abdominalPain, palpitations, lowMood];
 
 /** Deep dives: a UKMLA condition walked from history to prescribing */
@@ -58,7 +42,9 @@ export const plannedDeepDives: PlannedDeepDive[] = [
 ];
 
 /** Presentations and deep dives share one lookup (drills, summaries and the store key by id) */
-export const presentationById: Record<string, Presentation> = Object.fromEntries([...presentations, ...deepDives].map((p) => [p.id, p]));
+export const presentationById: Record<string, Presentation> = Object.fromEntries(
+  [...presentations, ...deepDives, ...areaDrills].map((p) => [p.id, p]),
+);
 
 export const specialtyById: Record<string, Specialty> = Object.fromEntries(specialties.map((s) => [s.id, s]));
 
@@ -78,6 +64,18 @@ export function checklistFor(section: SectionDef, c: CaseFile): ChecklistItem[] 
 export function presentationsFor(specialtyId: string): Presentation[] {
   return presentations.filter((p) => p.specialtyId === specialtyId);
 }
+
+/** Every drillable presentation-like thing in an area: hand-written presentations, deep dives, then its syllabus drills */
+export function drillSourcesFor(areaId: string): Presentation[] {
+  const area = areaDrillFor(areaId);
+  return [...presentations, ...deepDives].filter((p) => p.specialtyId === areaId).concat(area ? [area] : []);
+}
+
+/** The heading for a rep: the patient, or the topic when a rep isn't a person (syllabus drills) */
+export const caseTitle = (c: CaseFile) => c.topic?.title ?? `${c.patient.name}, ${c.patient.age}`;
+export const caseKicker = (c: CaseFile) => c.topic?.kicker ?? c.patient.setting;
+/** Short tag for chips, e.g. "45F" or "Chest pain" */
+export const caseTag = (c: CaseFile) => c.topic?.title ?? `${c.patient.age}${c.patient.sex === 'male' ? 'M' : 'F'}`;
 
 export const programKey = (presentationId: string, sectionId: string) => `${presentationId}:${sectionId}`;
 

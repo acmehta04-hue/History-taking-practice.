@@ -211,9 +211,9 @@ export default function Plan() {
               {specialties.map((s) => (
                 <Chip
                   key={s.id}
-                  label={s.title}
+                  label={s.short}
                   active={draft.specialtyId === s.id}
-                  onPress={() => setDraft({ ...draft, specialtyId: s.id, title: s.title })}
+                  onPress={() => setDraft({ ...draft, specialtyId: s.id, title: s.short })}
                 />
               ))}
             </Row>

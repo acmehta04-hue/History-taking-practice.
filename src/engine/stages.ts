@@ -23,7 +23,10 @@ export const STAGES: Record<Stage, { name: string; blurb: string; timeFactor: nu
 };
 
 /** What a stage changes, in words that fit the drill (a viva block levels up differently from a history) */
-export function stageBlurb(stage: Stage, kinds: SectionKind[]): string {
+export function stageBlurb(stage: Stage, sections: SectionDef[]): string {
+  const notes = sections[0]?.stageNotes;
+  if (notes && sections.length === 1) return notes[stage];
+  const kinds: SectionKind[] = sections.map((s) => s.kind);
   if (kinds.every((k) => k === 'viva'))
     return {
       1: 'Recall questions.',
@@ -52,6 +55,29 @@ export const VIVA_TIERS: Record<1 | 2 | 3, string> = {
 
 export function stageFor(setsCompleted: number): Stage {
   return Math.min(3, setsCompleted + 1) as Stage;
+}
+
+/**
+ * Syllabus drills have many topics: each set takes the next three in turn
+ * (easier ones first), so every topic comes up before any repeats.
+ */
+export function pickRotating(cases: CaseFile[], setsCompleted: number, reps = 3): CaseFile[] {
+  const sorted = [...cases].sort((a, b) => a.difficulty - b.difficulty || hash(a.id) - hash(b.id));
+  const n = sorted.length;
+  const k = Math.min(reps, n);
+  const start = (setsCompleted * k) % Math.max(1, n);
+  return Array.from({ length: k }, (_, i) => sorted[(start + i) % n]);
+}
+
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** The patients for a set: rotating sections cycle through every topic, others pick by difficulty */
+export function casesForSet(cases: CaseFile[], section: SectionDef | undefined, stage: Stage, setsCompleted: number): CaseFile[] {
+  return section?.rotate ? pickRotating(cases, setsCompleted) : pickCasesForStage(cases, stage, setsCompleted);
 }
 
 /** Choose this set's patients by difficulty: easy first at stage 1, hardest first at stage 3 */
@@ -119,7 +145,7 @@ export const followUpsFor = (c: CaseFile, sectionId: string): FollowUp[] => {
  */
 export function extraQuestions(section: SectionDef, c: CaseFile, stage: Stage, isLastStep = true): FollowUp[] {
   if (section.kind === 'viva') return vivaQuestions(c, stage);
-  const out: FollowUp[] = [...followUpsFor(c, section.id)];
+  const out: FollowUp[] = followUpsFor(c, section.id).filter((q) => !q.minStage || q.minStage <= stage);
   if (section.kind === 'interview') {
     const syn = isLastStep ? synthesisQuestion(c, stage) : undefined;
     if (syn) out.push(syn);

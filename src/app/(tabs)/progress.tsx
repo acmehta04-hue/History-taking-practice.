@@ -57,7 +57,6 @@ export default function Progress() {
 
   const confirmReset = () => {
     if (Platform.OS === 'web') {
-      // eslint-disable-next-line no-alert
       if (globalThis.confirm?.('Delete all progress on this device?')) resetAll();
       return;
     }

@@ -1,12 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 
-import { Button, Card, Chip, Icon, LevelBadge, ProgressBar, Row, Screen, SectionHeader, TopBar, Txt } from '@/components/ui';
-import { combosFor, type Drill, presentationById, programKey, singlesFor, specialtyById } from '@/content';
-import { comboReadiness, relativeDue } from '@/engine/recommend';
-import { STAGES, stageFor } from '@/engine/stages';
+import { DrillCard } from '@/components/DrillCard';
+import { Card, Chip, Icon, Row, Screen, SectionHeader, TopBar, Txt } from '@/components/ui';
+import { combosFor, presentationById, singlesFor, specialties, specialtyById, spotDrillFor } from '@/content';
+import { comboReadiness } from '@/engine/recommend';
 import { useStore } from '@/store';
-import { radius, space, type, useTheme } from '@/theme';
+import { space, type, useTheme } from '@/theme';
 
 export default function PresentationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,67 +25,7 @@ export default function PresentationScreen() {
 
   const sp = specialtyById[p.specialtyId];
   const tone = t.tones[sp.tone];
-  const start = (d: Drill) =>
-    router.push({ pathname: '/drill/[presentationId]/[sectionId]', params: { presentationId: p.id, sectionId: d.id } });
-
-  const drillCard = (d: Drill, locked?: { done: number; total: number }) => {
-    const prog = programs[programKey(p.id, d.id)];
-    const done = prog?.setsCompleted ?? 0;
-    const stage = stageFor(done);
-    return (
-      <Card key={d.id} style={{ gap: space.md }}>
-        <Row style={{ alignItems: 'flex-start' }}>
-          <View
-            style={{
-              minWidth: 52,
-              height: 52,
-              paddingHorizontal: 6,
-              borderRadius: radius.md,
-              backgroundColor: d.kind === 'combo' ? t.hero : tone.bg,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-            <Txt style={[type.bodyStrong, { fontSize: 12, textAlign: 'center' }]} color={d.kind === 'combo' ? t.heroInk : tone.ink}>
-              {d.kind === 'combo' ? `×${d.sections.length}` : d.short}
-            </Txt>
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Txt style={type.heading}>{d.kind === 'combo' ? d.short : d.title}</Txt>
-            <Txt style={type.small} color="soft">
-              {d.kind === 'combo' ? `${d.title}. ${d.blurb}` : d.blurb}
-            </Txt>
-          </View>
-        </Row>
-        {locked ? (
-          <View style={{ gap: 6 }}>
-            <ProgressBar value={locked.done / locked.total} color={tone.strong} />
-            <Row gap={6}>
-              <Icon name="lock-closed-outline" size={14} color={t.inkSoft} />
-              <Txt style={type.small} color="soft">
-                Unlocks when every block reaches L2 ({locked.done}/{locked.total}). You can try it now.
-              </Txt>
-            </Row>
-          </View>
-        ) : null}
-        <Row style={{ justifyContent: 'space-between', flexWrap: 'wrap' }} gap={space.sm}>
-          <Row gap={6} style={{ flexWrap: 'wrap', flex: 1 }}>
-            <LevelBadge level={prog?.level ?? 1} />
-            <Chip label={`Set ${done + 1} · ${STAGES[stage].name}`} icon={stage === 3 ? 'flame-outline' : undefined} />
-            {prog ? (
-              <Chip label={relativeDue(prog.nextDueAt)} tone={prog.nextDueAt && prog.nextDueAt <= Date.now() ? 'warn' : undefined} />
-            ) : null}
-          </Row>
-          <Button
-            small
-            label={done ? 'Next set' : locked ? 'Try' : 'Start'}
-            icon="play"
-            variant={locked ? 'secondary' : 'primary'}
-            onPress={() => start(d)}
-          />
-        </Row>
-      </Card>
-    );
-  };
+  const spot = spotDrillFor(p.id);
 
   return (
     <Screen>
@@ -99,14 +39,26 @@ export default function PresentationScreen() {
           {p.cases.length} patients rotate through each drill. A set is 3 reps — 3 patients, the same block of the history.
         </Txt>
         <Row gap={6} style={{ flexWrap: 'wrap' }}>
-          {p.ukmla.map((u) => (
-            <Chip key={u} label={u} icon="ribbon-outline" />
-          ))}
+          {p.ukmla.map((u) => {
+            const area = specialties.find((a) => a.title === u);
+            return (
+              <Chip
+                key={u}
+                label={u}
+                icon="ribbon-outline"
+                onPress={area ? () => router.push({ pathname: '/area/[id]', params: { id: area.id, focus: p.id } }) : undefined}
+              />
+            );
+          })}
         </Row>
       </Card>
 
       <SectionHeader title="Single blocks" />
-      <View style={{ gap: space.md }}>{singlesFor(p).map((d) => drillCard(d))}</View>
+      <View style={{ gap: space.md }}>
+        {singlesFor(p).map((d) => (
+          <DrillCard key={d.id} presentationId={p.id} drill={d} tone={sp.tone} />
+        ))}
+      </View>
 
       <SectionHeader title="Combined drills" />
       <Txt style={type.small} color="soft">
@@ -115,9 +67,35 @@ export default function PresentationScreen() {
       <View style={{ gap: space.md }}>
         {combosFor(p).map((d) => {
           const r = comboReadiness(p, d, programs);
-          return drillCard(d, r.ready ? undefined : { done: r.done, total: r.total });
+          return (
+            <DrillCard
+              key={d.id}
+              presentationId={p.id}
+              drill={d}
+              tone={sp.tone}
+              locked={r.ready ? undefined : { done: r.done, total: r.total }}
+            />
+          );
         })}
       </View>
+
+      {spot ? (
+        <Card
+          onPress={() => router.push({ pathname: '/drill/[presentationId]/[sectionId]', params: spot })}
+          accessibilityLabel="Spot the cause drill"
+          style={{ gap: 4 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt style={type.heading}>Spot the cause</Txt>
+              <Txt style={type.small} color="soft">
+                Quick reps on every condition {p.title.toLowerCase()} could be: name it from its classic picture, then say how to confirm
+                it.
+              </Txt>
+            </View>
+            <Icon name="flash-outline" size={24} />
+          </Row>
+        </Card>
+      ) : null}
 
       <Card variant="alt" style={{ gap: space.sm }}>
         <Txt style={type.heading}>How it progresses</Txt>

@@ -60,3 +60,10 @@ export function cardResults(extras: FollowUp[], covered: Record<string, Coverage
     .filter((s): s is { index: number; id: string; accuracy: number } => !!s.id)
     .map((s) => ({ qid: s.id, accuracy: s.accuracy }));
 }
+
+/** The next card to come due (for "next review in N days") */
+export function nextUpcoming(cards: Record<string, CardState>, now = Date.now()): CardState | undefined {
+  return Object.values(cards)
+    .filter((c) => c.due > now)
+    .sort((a, b) => a.due - b.due)[0];
+}

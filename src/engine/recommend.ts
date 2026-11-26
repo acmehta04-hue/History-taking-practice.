@@ -1,5 +1,16 @@
-import { combosFor, deepDives, type Drill, presentations, presentationsFor, programKey, singlesFor } from '../content';
-import type { Presentation } from '../content/types';
+import {
+  areaDrillFor,
+  areaDrills,
+  combosFor,
+  deepDives,
+  type Drill,
+  drillSourcesFor,
+  presentations,
+  programKey,
+  singlesFor,
+  specialties,
+} from '../content';
+import type { Presentation, Specialty } from '../content/types';
 import type { ProgramState } from '../store';
 import { activePlacement, type CalendarEvent, daysBetween, dayKey, EXAM_MODE_DAYS, nextExam } from './calendar';
 import { SETS_PER_BLOCK } from './progression';
@@ -15,8 +26,9 @@ export interface Pick {
 
 type Programs = Record<string, ProgramState>;
 
+/** Hand-written drills first, then the syllabus drills (sprint and spot for every area, then per-presentation spot drills) */
 function all(programs: Programs, specialtyId?: string): Pick[] {
-  return [...presentations, ...deepDives]
+  return [...presentations, ...deepDives, ...areaDrills]
     .filter((p) => !specialtyId || p.specialtyId === specialtyId)
     .flatMap((p) =>
       [...singlesFor(p), ...combosFor(p)].map((d) => ({
@@ -52,7 +64,7 @@ export function nextUp(programs: Programs, events: CalendarEvent[] = [], now = D
   const exam = nextExam(events, today);
   const examSoon = exam && daysBetween(today, exam.start) <= EXAM_MODE_DAYS;
   const placement = activePlacement(events, today);
-  const focus = placement?.specialtyId && presentationsFor(placement.specialtyId).length ? placement.specialtyId : undefined;
+  const focus = placement?.specialtyId && drillSourcesFor(placement.specialtyId).length ? placement.specialtyId : undefined;
 
   const due = dueNow(programs, now);
   if (examSoon) {
@@ -74,7 +86,11 @@ export function nextUp(programs: Programs, events: CalendarEvent[] = [], now = D
   const combo = scoped.find((x) => x.drill.kind === 'combo' && !x.program && comboReadiness(x.presentation, x.drill, programs).ready);
   if (combo) return { ...combo, reason: 'New: combined drill unlocked' };
 
-  const fresh = scoped.find((x) => x.drill.kind === 'single' && !x.program);
+  // Hand-written drills before syllabus drills; within the syllabus, an area's sprint and spot before its per-presentation drills
+  const fresh =
+    scoped.find((x) => x.drill.kind === 'single' && !x.program && x.presentation.kind !== 'area') ??
+    scoped.find((x) => x.drill.kind === 'single' && !x.program && ['sprint', 'spot'].includes(x.drill.id)) ??
+    scoped.find((x) => x.drill.kind === 'single' && !x.program);
   if (fresh) return { ...fresh, reason: tag };
   if (due.length) return due[0];
   const any = all(programs).find((x) => x.drill.kind === 'single' && !x.program);
@@ -88,11 +104,38 @@ export function mastery(program?: ProgramState): number {
   return program.bestAccuracy * (program.level / 3);
 }
 
+/** Mastery for an area: its hand-written drills plus its two main syllabus drills (sprint and spot) */
 export function specialtyMastery(specialtyId: string, programs: Programs): number {
-  const sections = presentationsFor(specialtyId).flatMap((p) => p.sections.map((s) => programs[programKey(p.id, s.id)]));
-  if (!sections.length) return 0;
-  return sections.reduce((a, p) => a + mastery(p), 0) / sections.length;
+  const keys = drillSourcesFor(specialtyId).flatMap((p) =>
+    p.sections.filter((s) => p.kind !== 'area' || s.id === 'sprint' || s.id === 'spot').map((s) => programKey(p.id, s.id)),
+  );
+  if (!keys.length) return 0;
+  return keys.reduce((a, k) => a + mastery(programs[k]), 0) / keys.length;
 }
+
+/** When anything in an area was last practised (0 if never) */
+export function lastPractised(specialtyId: string, programs: Programs): number {
+  return Math.max(
+    0,
+    ...drillSourcesFor(specialtyId).flatMap((p) => p.sections.map((s) => programs[programKey(p.id, s.id)]?.lastSetAt ?? 0)),
+  );
+}
+
+/** The areas to show first: the current placement, then recently practised, then areas with full history drills */
+export function topAreas(programs: Programs, events: CalendarEvent[], n = 5, now = Date.now()): Specialty[] {
+  const placement = activePlacement(events, dayKey(new Date(now)))?.specialtyId;
+  const score = (s: Specialty) =>
+    (s.id === placement ? 1e15 : 0) + lastPractised(s.id, programs) + (presentations.some((p) => p.specialtyId === s.id) ? 1 : 0);
+  return [...specialties].sort((a, b) => score(b) - score(a)).slice(0, n);
+}
+
+/** Sets completed across an area's syllabus drills */
+export function syllabusSets(specialtyId: string, programs: Programs): number {
+  const p = areaDrillFor(specialtyId);
+  return p ? p.sections.reduce((a, s) => a + (programs[programKey(p.id, s.id)]?.setsCompleted ?? 0), 0) : 0;
+}
+
+export const isDue = (ts: number | undefined, now = Date.now()) => ts !== undefined && ts <= now;
 
 export function relativeDue(ts: number | undefined, now = Date.now()): string {
   if (ts === undefined) return 'Not started';

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, type IconName, LevelBadge, mmss, pct, Row, Screen, Stat, TopBar, Txt } from '@/components/ui';
-import { checklistFor, getCase, getDrill, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
+import { caseTitle, checklistFor, getCase, getDrill, LEVEL_NAMES, libraryById, presentationById, programKey } from '@/content';
 import {
   type CaseFile,
   type ChecklistItem,
@@ -88,11 +88,7 @@ export default function Summary() {
           <Row gap={space.sm} style={{ alignItems: 'flex-start' }}>
             <Icon name="flame-outline" size={18} color={t.accent} />
             <Txt style={{ flex: 1 }} color="hero">
-              Next set steps up to {STAGES[nextStage].name}:{' '}
-              {stageBlurb(
-                nextStage,
-                drill.sections.map((x) => x.kind),
-              )}
+              Next set steps up to {STAGES[nextStage].name}: {stageBlurb(nextStage, drill.sections)}
             </Txt>
           </Row>
         ) : null}
@@ -223,7 +219,7 @@ function RepCard({ r, sections, stage, c, index }: { r: RepResult; sections: Sec
         <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1, gap: 2 }}>
             <Txt style={type.tiny} color="faint">
-              Rep {index + 1} · {c.patient.name}, {c.patient.age}
+              Rep {index + 1} · {c.topic && c.topic.title === c.diagnosis ? c.topic.kicker : caseTitle(c)}
             </Txt>
             <Txt style={type.heading}>{c.diagnosis}</Txt>
             <Txt style={type.small} color="soft">
@@ -351,7 +347,7 @@ function RepDetails({ r, section, c, stage, isLast }: { r: RepResult; section: S
       {r.distractors.length ? (
         <View style={{ gap: space.sm }}>
           <Txt style={type.tiny} color="faint">
-            Not first line
+            {section.wrongLabel ?? 'Not first line'}
           </Txt>
           {r.distractors.map((d, i) => (
             <Txt key={`${d}-${i}`} style={type.small}>

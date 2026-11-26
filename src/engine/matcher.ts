@@ -7,9 +7,32 @@ import type { CaseFile, ChecklistItem, Distractor, ReasonItem } from '../content
  * (see docs/ROADMAP.md) — keep this as the offline fallback.
  */
 
+const ACCENTS: Record<string, string> = {
+  à: 'a',
+  á: 'a',
+  â: 'a',
+  ä: 'a',
+  ç: 'c',
+  è: 'e',
+  é: 'e',
+  ê: 'e',
+  ë: 'e',
+  ì: 'i',
+  í: 'i',
+  ï: 'i',
+  ñ: 'n',
+  ò: 'o',
+  ó: 'o',
+  ö: 'o',
+  ù: 'u',
+  ú: 'u',
+  ü: 'u',
+};
+
 export function normalise(text: string): string {
   return text
     .toLowerCase()
+    .replace(/[àáâäçèéêëìíïñòóöùúü]/g, (ch) => ACCENTS[ch])
     .replace(/[’‘`]/g, "'")
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')

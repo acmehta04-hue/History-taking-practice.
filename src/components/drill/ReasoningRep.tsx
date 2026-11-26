@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { caseKicker, caseTitle } from '../../content';
 import type { AssistLevel, CaseFile, SectionDef } from '../../content/types';
 import { cardResults } from '../../engine/flashcards';
 import type { Coverage } from '../../engine/scoring';
@@ -72,7 +73,7 @@ export function ReasoningRep({
         <Card style={{ gap: space.sm }}>
           <Row style={{ justifyContent: 'space-between' }}>
             <Txt style={type.tiny} color="faint">
-              {patientCase.patient.setting}
+              {caseKicker(patientCase)}
             </Txt>
             <Row gap={4}>
               <Icon name="time-outline" size={16} color={t.inkSoft} />
@@ -81,9 +82,7 @@ export function ReasoningRep({
               </Txt>
             </Row>
           </Row>
-          <Txt style={type.heading}>
-            {patientCase.patient.name}, {patientCase.patient.age}
-          </Txt>
+          <Txt style={type.heading}>{caseTitle(patientCase)}</Txt>
           <Txt>{patientCase.summaries?.[section.id] ?? patientCase.summary}</Txt>
         </Card>
 
@@ -95,6 +94,10 @@ export function ReasoningRep({
           prompt={section.prompt ?? 'One item per line.'}
           finishLabel={extras.length ? 'Next question' : 'Finish rep'}
           onFinish={(o) => (extras.length ? setMain(o) : finish(o))}
+          single={section.single}
+          wrongLabel={section.wrongLabel}
+          guidedOnlyDistractors={section.guidedOnlyDistractors}
+          placeholder={section.placeholder}
         />
       </View>
     </ScrollView>

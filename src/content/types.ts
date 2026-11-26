@@ -74,6 +74,8 @@ export interface ReasonItem {
   why: string;
   /** Used for Prompted mode counts, e.g. "Bloods", "Bedside", "Imaging" */
   category?: string;
+  /** Shown when the student asks for a hint (defaults to `why`) */
+  hint?: string;
 }
 
 /** A plausible-sounding option offered in Guided mode that is not in the model answer */
@@ -111,6 +113,18 @@ export interface SectionDef {
   caseIds?: string[];
   /** Interview sections: after each question, the student tags what it was for */
   tagPurpose?: boolean;
+  /** Many patients or topics: each set takes the next three in turn, so every one comes up */
+  rotate?: boolean;
+  /** Reasoning sections: one answer only (spot the diagnosis) */
+  single?: boolean;
+  /** Reasoning sections: what a wrong-but-plausible option is called in feedback (default "Not first line") */
+  wrongLabel?: string;
+  /** Wrong options only appear as Guided chips; typing one at Prompted or Independent isn't penalised */
+  guidedOnlyDistractors?: boolean;
+  /** Reasoning sections: example answer shown in the empty input */
+  placeholder?: string;
+  /** What each stage adds, when it differs from the defaults (syllabus drills have topics, not patients) */
+  stageNotes?: Record<1 | 2 | 3, string>;
 }
 
 export interface Patient {
@@ -135,6 +149,8 @@ export interface FollowUp {
   data?: string;
   /** Wrong-but-plausible options mixed into Guided mode chips */
   distractors?: Distractor[];
+  /** Only asked from this stage on (2 = Application, 3 = Challenge) */
+  minStage?: 2 | 3;
 }
 
 /**
@@ -158,6 +174,8 @@ export interface Concern {
 
 export interface CaseFile {
   id: string;
+  /** Shown instead of the patient's name when a rep is a topic, not a person (syllabus drills) */
+  topic?: { kicker: string; title: string };
   /** Hidden until the summary, e.g. "Acute appendicitis" */
   diagnosis: string;
   patient: Patient;
@@ -209,8 +227,8 @@ export interface Presentation {
   /** Combined drills, unlocked once their blocks reach L2 */
   combos: ComboDef[];
   cases: CaseFile[];
-  /** 'deepdive' = a condition walked from history to prescribing */
-  kind?: 'presentation' | 'deepdive';
+  /** 'deepdive' = a condition walked from history to prescribing; 'area' = generated syllabus drills for a UKMLA area */
+  kind?: 'presentation' | 'deepdive' | 'area';
   deepDive?: DeepDiveMeta;
 }
 
@@ -231,14 +249,56 @@ export interface PlannedDeepDive {
   specialtyId: string;
 }
 
+/** A UKMLA area of clinical practice (the app calls these specialties for short) */
 export interface Specialty {
   id: string;
+  /** The content map's name, e.g. "Gastrointestinal including liver" */
   title: string;
+  /** Short name for cards and chips, e.g. "Gastro & liver" */
+  short: string;
   /** Theme key for the card colour */
   tone: 'lilac' | 'coral' | 'butter' | 'mint' | 'sky' | 'rose';
   icon: string;
-  /** Presentations with content, plus planned ones shown as "coming soon" */
-  planned: string[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Syllabus catalogue (src/content/catalogue)                           */
+/* ------------------------------------------------------------------ */
+
+/** An investigation the syllabus drills can ask for */
+export interface TestDef {
+  id: string;
+  label: string;
+  category: string;
+  match: string[];
+}
+
+/** A condition: what it is called, the picture to recognise, and how to confirm it */
+export interface SyllabusCondition {
+  id: string;
+  title: string;
+  /** Area ids; the first is its home */
+  areas: string[];
+  /** Every pattern that names it: from the title, plus synonyms */
+  match: string[];
+  /** Synonyms only (used by the cross-credit test) */
+  synonyms: string[];
+  /** The classic picture, written without naming the condition */
+  key: string;
+  /** Test ids that confirm it */
+  ix: string[];
+  /** A differential bucket rather than a content-map condition (e.g. "Adverse drug effect"): never a spot-the-diagnosis answer */
+  helper?: boolean;
+}
+
+/** A presentation and the conditions it could be */
+export interface SyllabusPresentation {
+  id: string;
+  title: string;
+  /** Area ids; the first is its home */
+  areas: string[];
+  /** Candidate conditions: must-not-miss (redflag), common (core), also consider (extra) */
+  causes: { id: string; weight: Weight }[];
 }
 
 export interface LibraryCard {

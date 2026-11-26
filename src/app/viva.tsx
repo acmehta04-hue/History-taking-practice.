@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExtraQuestions } from '@/components/drill/ExtraQuestions';
 import { Button, Card, Icon, pct, Row, Screen, TopBar, Txt } from '@/components/ui';
-import { findQuestion } from '@/content';
+import { caseTitle, findQuestion } from '@/content';
 import type { CaseFile, FollowUp, Presentation, VivaQuestion } from '@/content/types';
-import { dueCards, isLearned, parseCardKey, PASS_MARK, questionScores } from '@/engine/flashcards';
+import { dueCards, isLearned, nextUpcoming, parseCardKey, PASS_MARK, questionScores } from '@/engine/flashcards';
 import type { Coverage } from '@/engine/scoring';
 import { VIVA_TIERS, xid } from '@/engine/stages';
 import { useStore } from '@/store';
@@ -30,7 +30,7 @@ export default function VivaReview() {
   const gradeCards = useStore((s) => s.gradeCards);
 
   // Freeze the queue when the screen opens, so grading doesn't reshuffle it
-  const frozen = useRef(cards).current;
+  const [frozen] = useState(cards);
   const queue = useMemo<Due[]>(
     () =>
       dueCards(frozen)
@@ -50,9 +50,7 @@ export default function VivaReview() {
 
   const total = Object.keys(cards).length;
   const learned = Object.values(cards).filter(isLearned).length;
-  const upcoming = Object.values(cards)
-    .filter((c) => c.due > Date.now())
-    .sort((a, b) => a.due - b.due)[0];
+  const upcoming = nextUpcoming(cards);
 
   if (phase === 'quiz' && queue[index]) {
     const due = queue[index];
@@ -63,7 +61,7 @@ export default function VivaReview() {
           {due.p.title} · {due.box === 0 ? 'missed last time' : `box ${due.box}`}
         </Txt>
         <Txt style={type.bodyStrong}>
-          {due.c.patient.name}, {due.c.patient.age}: {due.c.diagnosis}
+          {caseTitle(due.c)}: {due.c.diagnosis}
         </Txt>
       </Card>
     );
@@ -101,7 +99,7 @@ export default function VivaReview() {
           <Card key={r.due.key} style={{ gap: space.sm }}>
             <Row style={{ justifyContent: 'space-between' }}>
               <Txt style={type.tiny} color="faint">
-                {r.due.p.title} · {r.due.c.patient.name}
+                {r.due.p.title} · {caseTitle(r.due.c)}
               </Txt>
               <Txt style={type.bodyStrong} color={r.accuracy >= PASS_MARK ? 'good' : 'bad'}>
                 {pct(r.accuracy)}

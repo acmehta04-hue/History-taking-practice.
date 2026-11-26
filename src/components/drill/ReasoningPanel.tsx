@@ -30,6 +30,9 @@ export function ReasoningPanel({
   finishLabel,
   onFinish,
   placeholder,
+  single = false,
+  wrongLabel = 'Not first line',
+  guidedOnlyDistractors = false,
 }: {
   seed: string;
   items: ReasonItem[];
@@ -39,6 +42,12 @@ export function ReasoningPanel({
   finishLabel: string;
   onFinish: (o: ReasoningOutcome) => void;
   placeholder?: string;
+  /** One answer only (spot the diagnosis): no editing once it's in */
+  single?: boolean;
+  /** What a wrong-but-plausible option is called */
+  wrongLabel?: string;
+  /** Wrong options are only Guided chips; typed answers at L2/L3 are checked against the model answer alone */
+  guidedOnlyDistractors?: boolean;
 }) {
   const t = useTheme();
   const [input, setInput] = useState('');
@@ -48,6 +57,10 @@ export function ReasoningPanel({
   const [hinted, setHinted] = useState<Set<string>>(new Set());
   const [hint, setHint] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
+
+  // Only Guided mode offers wrong options when they are auto-generated, so a typed real-but-unlisted cause isn't penalised
+  const activeDistractors = guidedOnlyDistractors && level > 1 ? [] : distractors;
+  const full = single && entries.length > 0;
 
   const options = useMemo(
     () => seededShuffle([...items.map((i) => i.label), ...distractors.map((d) => d.label)], seed),
@@ -70,7 +83,8 @@ export function ReasoningPanel({
     const reason = input.trim();
     const text = chosen ? (reason ? `${chosen} — ${reason}` : chosen) : reason;
     if (!text) return;
-    const m = matchEntry(text, items, distractors);
+    if (full) return;
+    const m = matchEntry(text, items, activeDistractors);
     const method: Method = chosen ? 'suggested' : 'typed';
     const next = { ...covered };
     for (const it of m.items) {
@@ -92,7 +106,7 @@ export function ReasoningPanel({
     const it = nextToHint(items, covered, hinted);
     if (!it) return setHint('You have covered everything in the model answer.');
     setHinted(new Set(hinted).add(it.id));
-    setHint(it.why);
+    setHint(it.hint ?? it.why);
   };
 
   const remove = (i: number) => {
@@ -102,8 +116,9 @@ export function ReasoningPanel({
 
   const feedback = (e: EntryLine) => {
     if (level === 3) return null;
-    if (e.distractor) return <Chip label="Not first line" tone="warn" icon="alert-circle-outline" />;
-    if (e.itemIds.length) return <Chip label="In model answer" tone="good" icon="checkmark" />;
+    if (e.distractor) return <Chip label={wrongLabel} tone="warn" icon="alert-circle-outline" />;
+    if (e.itemIds.length) return <Chip label={single ? 'Correct' : 'In model answer'} tone="good" icon="checkmark" />;
+    if (single) return <Chip label="Not the answer" tone="warn" icon="close" />;
     return <Chip label="Not recognised" icon="help-outline" />;
   };
 
@@ -119,10 +134,10 @@ export function ReasoningPanel({
         </Row>
       ) : null}
 
-      {level === 1 ? (
+      {level === 1 && !full ? (
         <View style={{ gap: 6 }}>
           <Txt style={type.tiny} color="faint">
-            Tap an option (add the reason if you can)
+            {single ? 'Tap your answer (add the reason if you can)' : 'Tap an option (add the reason if you can)'}
           </Txt>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
             {options.map((o) => (
@@ -141,9 +156,11 @@ export function ReasoningPanel({
               </Txt>
               <Row gap={6}>
                 {feedback(e)}
-                <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${e.text}`} hitSlop={8} onPress={() => remove(i)}>
-                  <Icon name="close" size={16} color={t.inkFaint} />
-                </Pressable>
+                {single ? null : (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${e.text}`} hitSlop={8} onPress={() => remove(i)}>
+                    <Icon name="close" size={16} color={t.inkFaint} />
+                  </Pressable>
+                )}
               </Row>
             </Row>
           ))}
@@ -159,7 +176,7 @@ export function ReasoningPanel({
         </Card>
       ) : null}
 
-      {chosen ? (
+      {chosen && !full ? (
         <Row gap={6}>
           <Txt style={type.small} color="soft">
             Adding:
@@ -167,46 +184,55 @@ export function ReasoningPanel({
           <Chip label={chosen} active icon="close" onPress={() => setChosen(null)} />
         </Row>
       ) : null}
-      <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'flex-end' }}>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          onSubmitEditing={submit}
-          placeholder={chosen ? 'Why? e.g. likely theatre' : (placeholder ?? 'e.g. FBC — anaemia from blood loss')}
-          placeholderTextColor={t.inkFaint}
-          returnKeyType="send"
-          submitBehavior="submit"
-          accessibilityLabel="Your answer"
-          style={[
-            type.body,
-            {
-              flex: 1,
-              color: t.ink,
-              backgroundColor: t.surface,
-              borderRadius: radius.md,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderWidth: 1,
-              borderColor: t.line,
-            },
-          ]}
-        />
-        <Button label="Add" small onPress={submit} disabled={!input.trim() && !chosen} style={{ paddingVertical: 12 }} />
-      </View>
+      {full ? null : (
+        <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'flex-end' }}>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            onSubmitEditing={submit}
+            placeholder={chosen ? 'Why? e.g. likely theatre' : (placeholder ?? 'e.g. FBC — anaemia from blood loss')}
+            placeholderTextColor={t.inkFaint}
+            returnKeyType="send"
+            submitBehavior="submit"
+            accessibilityLabel="Your answer"
+            style={[
+              type.body,
+              {
+                flex: 1,
+                color: t.ink,
+                backgroundColor: t.surface,
+                borderRadius: radius.md,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: t.line,
+              },
+            ]}
+          />
+          <Button
+            label={single ? 'Answer' : 'Add'}
+            small
+            onPress={submit}
+            disabled={!input.trim() && !chosen}
+            style={{ paddingVertical: 12 }}
+          />
+        </View>
+      )}
 
       <Row style={{ justifyContent: 'space-between' }}>
-        {level > 1 ? <Button label="Hint" icon="bulb-outline" variant="secondary" small onPress={askHint} /> : <View />}
+        {level > 1 && !full ? <Button label="Hint" icon="bulb-outline" variant="secondary" small onPress={askHint} /> : <View />}
         <Button
           label={finishLabel}
           icon="checkmark-done"
           small
           onPress={() => onFinish({ covered, entries, distractors: picked })}
+          variant={full || !single ? 'primary' : 'secondary'}
           disabled={!entries.length}
         />
       </Row>
       {entries.length ? null : (
         <Txt style={type.small} color="faint">
-          Add at least one line to finish.
+          {single ? 'One answer: make it your best one.' : 'Add at least one line to finish.'}
         </Txt>
       )}
     </View>

@@ -1,13 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { success } from '@/components/drill/shared';
 import { StepRep } from '@/components/drill/StepRep';
 import { Button, Card, Chip, LevelBadge, mmss, pct, Ring, Row, TopBar, Txt } from '@/components/ui';
-import { casesForDrill, getDrill, LEVEL_NAMES, presentationById, programKey } from '@/content';
-import { pickCasesForStage, stageBlurb, STAGES, stageFor } from '@/engine/stages';
+import { caseTag, casesForDrill, getDrill, LEVEL_NAMES, presentationById, programKey } from '@/content';
+import { casesForSet, stageBlurb, STAGES, stageFor } from '@/engine/stages';
 import { defaultProgram, type RepResult, useStore } from '@/store';
 import { MAX_WIDTH, space, type, useTheme } from '@/theme';
 
@@ -28,12 +28,18 @@ export default function DrillScreen() {
   const program = useStore((s) => s.programs[programKey(presentationId ?? '', sectionId ?? '')]) ?? defaultProgram;
   const completeSet = useStore((s) => s.completeSet);
 
-  // Freeze the set's level, stage and patients when it starts
-  const level = useRef(program.level).current;
-  const setNumber = useRef(program.setsCompleted + 1).current;
-  const stage = useRef(stageFor(program.setsCompleted)).current;
-  const cases = useMemo(() => (p && drill ? pickCasesForStage(casesForDrill(p, drill), stage, program.setsCompleted) : []), [p]); // eslint-disable-line react-hooks/exhaustive-deps
-  const startedAt = useRef(Date.now()).current;
+  // Freeze the set's level, stage, patients and start time when it starts
+  const [frozen] = useState(() => {
+    const stage = stageFor(program.setsCompleted);
+    return {
+      level: program.level,
+      setNumber: program.setsCompleted + 1,
+      stage,
+      startedAt: Date.now(),
+      cases: p && drill ? casesForSet(casesForDrill(p, drill), drill.sections[0], stage, program.setsCompleted) : [],
+    };
+  });
+  const { level, setNumber, stage, startedAt, cases } = frozen;
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [rep, setRep] = useState(0);
@@ -126,12 +132,7 @@ export default function DrillScreen() {
               </View>
             ))}
           </Row>
-          <Txt color="hero">
-            {stageBlurb(
-              stage,
-              drill.sections.map((x) => x.kind),
-            )}
-          </Txt>
+          <Txt color="hero">{stageBlurb(stage, drill.sections)}</Txt>
           <Txt color="heroSoft">{LEVEL_COPY[level]}</Txt>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
             {cases.map((c, i) => (
@@ -139,8 +140,7 @@ export default function DrillScreen() {
                 key={c.id}
                 style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Txt style={type.small} color="hero">
-                  Rep {i + 1}: {c.patient.age}
-                  {c.patient.sex === 'male' ? 'M' : 'F'} · {'●'.repeat(c.difficulty)}
+                  Rep {i + 1}: {caseTag(c)} · {'●'.repeat(c.difficulty)}
                   {'○'.repeat(3 - c.difficulty)}
                 </Txt>
               </View>

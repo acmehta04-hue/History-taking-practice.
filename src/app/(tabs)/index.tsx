@@ -2,11 +2,11 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, LevelBadge, pct, Ring, Row, Screen, SectionHeader, Stat, Txt } from '@/components/ui';
-import { deepDives, library, presentationsFor, programKey, specialties, specialtyById } from '@/content';
+import { deepDives, library, presentationsFor, presentationsInArea, programKey, specialties, specialtyById } from '@/content';
 import { activePlacement, daysBetween, dayKey, nextExam, parseDay } from '@/engine/calendar';
 import { dueCards } from '@/engine/flashcards';
 import { SETS_PER_BLOCK } from '@/engine/progression';
-import { dueNow, nextUp, relativeDue, specialtyMastery } from '@/engine/recommend';
+import { dueNow, nextUp, relativeDue, specialtyMastery, topAreas } from '@/engine/recommend';
 import { average } from '@/engine/scoring';
 import { STAGES, stageFor } from '@/engine/stages';
 import { setsSince, streakDays, useStore } from '@/store';
@@ -168,53 +168,63 @@ export default function Home() {
       ) : null}
 
       {/* Specialties */}
-      <SectionHeader title="Your topics" action="See all" onAction={() => router.push('/topics')} />
+      <SectionHeader title="Your topics" action="All areas" onAction={() => router.push('/topics')} />
       <View style={styles.grid}>
-        {specialties.map((s) => {
+        {topAreas(programs, events).map((s) => {
           const ps = presentationsFor(s.id);
           const m = specialtyMastery(s.id, programs);
           const tone = t.tones[s.tone];
-          const live = ps.length > 0;
           return (
             <View key={s.id} style={styles.gridItem}>
               <Card
                 tone={s.tone}
-                onPress={
-                  live ? () => router.push({ pathname: '/presentation/[id]', params: { id: ps[0].id } }) : () => router.push('/topics')
-                }
+                onPress={() => router.push({ pathname: '/area/[id]', params: { id: s.id } })}
                 accessibilityLabel={s.title}
-                style={{ minHeight: 150, justifyContent: 'space-between', opacity: live ? 1 : 0.7 }}>
+                style={{ minHeight: 150, justifyContent: 'space-between' }}>
                 <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <View style={[styles.iconBubble, { backgroundColor: t.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.55)' }]}>
                     <Icon name={s.icon as never} size={20} color={tone.ink} />
                   </View>
-                  {live ? (
-                    <Ring
-                      value={m}
-                      size={40}
-                      stroke={5}
-                      color={tone.strong}
-                      track={t.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}>
-                      <Txt style={[type.small, { fontSize: 10, fontWeight: '800' }]} color={tone.ink}>
-                        {Math.round(m * 100)}
-                      </Txt>
-                    </Ring>
-                  ) : null}
+                  <Ring
+                    value={m}
+                    size={40}
+                    stroke={5}
+                    color={tone.strong}
+                    track={t.dark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.6)'}>
+                    <Txt style={[type.small, { fontSize: 10, fontWeight: '800' }]} color={tone.ink}>
+                      {Math.round(m * 100)}
+                    </Txt>
+                  </Ring>
                 </Row>
                 <View>
                   <Txt style={type.heading} color={tone.ink}>
-                    {s.title}
+                    {s.short}
                   </Txt>
                   <Txt style={type.small} color={tone.ink}>
-                    {live
-                      ? `${ps.length} presentation${ps.length > 1 ? 's' : ''} · ${ps.reduce((a, p) => a + p.sections.length, 0)} drills`
-                      : 'Coming soon'}
+                    {presentationsInArea(s.id).length} presentations
+                    {ps.length ? ` · ${ps.length} full drill${ps.length > 1 ? 's' : ''}` : ''}
                   </Txt>
                 </View>
               </Card>
             </View>
           );
         })}
+        <View style={styles.gridItem}>
+          <Card
+            onPress={() => router.push('/topics')}
+            accessibilityLabel="All areas"
+            style={{ minHeight: 150, justifyContent: 'space-between' }}>
+            <View style={[styles.iconBubble, { backgroundColor: t.surfaceAlt }]}>
+              <Icon name="grid-outline" size={20} />
+            </View>
+            <View>
+              <Txt style={type.heading}>All {specialties.length} areas</Txt>
+              <Txt style={type.small} color="soft">
+                The whole UKMLA syllabus
+              </Txt>
+            </View>
+          </Card>
+        </View>
       </View>
 
       {/* Deep dives */}

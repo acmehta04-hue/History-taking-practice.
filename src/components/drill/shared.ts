@@ -16,13 +16,14 @@ export function success() {
 
 /** Seconds since mount, ticking once a second */
 export function useElapsed(): [number, () => number] {
-  const start = useRef(Date.now());
+  const start = useRef<number | null>(null);
   const [sec, setSec] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setSec(Math.floor((Date.now() - start.current) / 1000)), 1000);
+    start.current = Date.now();
+    const id = setInterval(() => setSec(Math.floor((Date.now() - (start.current ?? Date.now())) / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
-  return [sec, () => Math.round((Date.now() - start.current) / 1000)];
+  return [sec, () => Math.round((Date.now() - (start.current ?? Date.now())) / 1000)];
 }
 
 const PRIORITY: Record<Weight, number> = { redflag: 0, core: 1, extra: 2 };
