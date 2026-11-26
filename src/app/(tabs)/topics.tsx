@@ -9,6 +9,7 @@ import {
   conditionsInArea,
   deepDives,
   plannedDeepDives,
+  patientsOf,
   presentations,
   presentationsInArea,
   programKey,
@@ -183,7 +184,7 @@ export default function Topics() {
                     <View style={{ gap: 6 }}>
                       <ProgressBar value={m} color={tone.strong} track={track} />
                       <Txt style={type.small} color={tone.ink}>
-                        {p.cases.length} patients · {sectionsDone}/{p.sections.length} drills started · {Math.round(m * 100)}% mastery
+                        {patientsOf(p).length} patients · {sectionsDone}/{p.sections.length} drills started · {Math.round(m * 100)}% mastery
                       </Txt>
                     </View>
                   </Card>

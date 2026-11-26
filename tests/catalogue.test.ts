@@ -111,7 +111,7 @@ describe('syllabus catalogue', () => {
   });
 
   it('presentations with a hand-written drill share its id', () => {
-    for (const id of ['abdominal-pain', 'palpitations', 'low-mood'])
+    for (const id of ['abdominal-pain', 'change-bowel-habit', 'palpitations', 'low-mood'])
       assert.ok(syllabusPresentations.some((p) => p.id === id) && presentations.some((p) => p.id === id), id);
   });
 });

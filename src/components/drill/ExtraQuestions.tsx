@@ -5,6 +5,7 @@ import type { AssistLevel, FollowUp } from '../../content/types';
 import type { Coverage } from '../../engine/scoring';
 import { xid } from '../../engine/stages';
 import { MAX_WIDTH, radius, space, type } from '../../theme';
+import { ResultsView } from '../results';
 import { Card, Txt } from '../ui';
 import { ReasoningPanel } from './ReasoningPanel';
 
@@ -65,6 +66,11 @@ export function ExtraQuestions({
             </View>
           ) : null}
         </Card>
+        {q.results ? (
+          <Card style={{ gap: space.sm }}>
+            <ResultsView panels={q.results} />
+          </Card>
+        ) : null}
         <ReasoningPanel
           key={i}
           seed={seed + i}

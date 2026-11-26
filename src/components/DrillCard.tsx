@@ -79,9 +79,7 @@ export function DrillCard({
         <Row gap={6} style={{ flexWrap: 'wrap', flex: 1 }}>
           <LevelBadge level={prog?.level ?? 1} />
           <Chip label={`Set ${done + 1} · ${STAGES[stage].name}`} icon={stage === 3 ? 'flame-outline' : undefined} />
-          {prog ? (
-            <Chip label={relativeDue(prog.nextDueAt)} tone={isDue(prog.nextDueAt) ? 'warn' : undefined} />
-          ) : null}
+          {prog ? <Chip label={relativeDue(prog.nextDueAt)} tone={isDue(prog.nextDueAt) ? 'warn' : undefined} /> : null}
         </Row>
         <Button
           small

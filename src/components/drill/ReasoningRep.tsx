@@ -8,6 +8,7 @@ import type { Coverage } from '../../engine/scoring';
 import { extraQuestions, type Stage } from '../../engine/stages';
 import type { EntryLine, RepResult } from '../../store';
 import { MAX_WIDTH, space, type, useTheme } from '../../theme';
+import { ResultsView } from '../results';
 import { Card, Icon, mmss, Row, Txt } from '../ui';
 import { ExtraQuestions, extraScorable } from './ExtraQuestions';
 import { ReasoningPanel, type ReasoningOutcome } from './ReasoningPanel';
@@ -84,6 +85,7 @@ export function ReasoningRep({
           </Row>
           <Txt style={type.heading}>{caseTitle(patientCase)}</Txt>
           <Txt>{patientCase.summaries?.[section.id] ?? patientCase.summary}</Txt>
+          {patientCase.results?.[section.id] ? <ResultsView panels={patientCase.results[section.id]} /> : null}
         </Card>
 
         <ReasoningPanel

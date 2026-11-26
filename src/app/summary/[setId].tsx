@@ -13,6 +13,7 @@ import {
   type ReasonItem,
   type SectionDef,
 } from '@/content/types';
+import { ResultsView } from '@/components/results';
 import { PASS_MARK } from '@/engine/flashcards';
 import { relativeDue } from '@/engine/recommend';
 import type { Method } from '@/engine/scoring';
@@ -280,6 +281,7 @@ function RepDetails({ r, section, c, stage, isLast }: { r: RepResult; section: S
 
   return (
     <>
+      {c.results?.[section.id] ? <ResultsView panels={c.results[section.id]} reveal /> : null}
       {section.tagPurpose ? (
         <PurposeBreakdown items={base} r={r} />
       ) : (
@@ -389,6 +391,7 @@ function QuestionReview({ q, i, r }: { q: FollowUp; i: number; r: RepResult }) {
           {q.data}
         </Txt>
       ) : null}
+      {q.results ? <ResultsView panels={q.results} reveal /> : null}
       {q.items.map((it) => {
         const ok = !!r.covered[xid(i, it.id)];
         return (

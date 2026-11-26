@@ -10,6 +10,7 @@ import {
   conditionsInArea,
   deepDives,
   getDrill,
+  patientsOf,
   presentations,
   presentationsInArea,
   specialtyById,
@@ -85,7 +86,7 @@ export default function AreaScreen() {
                 <View style={{ flex: 1, gap: 2 }}>
                   <Txt style={type.heading}>{p.title}</Txt>
                   <Txt style={type.small} color="soft">
-                    {p.cases.length} scripted patients · {p.sections.length} blocks · {p.combos.length} combined drills
+                    {patientsOf(p).length} scripted patients · {p.sections.length} blocks · {p.combos.length} combined drills
                   </Txt>
                 </View>
                 <Icon name="arrow-forward-circle" size={26} />

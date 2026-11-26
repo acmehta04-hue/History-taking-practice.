@@ -3,6 +3,7 @@ import { areas } from './catalogue/areas';
 import { depressionDive } from './deepdives/depression';
 import { library, libraryById } from './library';
 import { abdominalPain } from './presentations/abdominal-pain';
+import { changeBowelHabit } from './presentations/change-bowel-habit';
 import { lowMood } from './presentations/low-mood';
 import { palpitations } from './presentations/palpitations';
 import type { CaseFile, ChecklistItem, ComboDef, FollowUp, PlannedDeepDive, Presentation, SectionDef, Specialty } from './types';
@@ -29,7 +30,7 @@ export { library, libraryById, areaDrills, areaDrillFor, spotDrillFor };
 export const specialties: Specialty[] = areas;
 
 /** Hand-written presentations: full history drills with scripted patients */
-export const presentations: Presentation[] = [abdominalPain, palpitations, lowMood];
+export const presentations: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood];
 
 /** Deep dives: a UKMLA condition walked from history to prescribing */
 export const deepDives: Presentation[] = [depressionDive];
@@ -75,7 +76,7 @@ export function drillSourcesFor(areaId: string): Presentation[] {
 export const caseTitle = (c: CaseFile) => c.topic?.title ?? `${c.patient.name}, ${c.patient.age}`;
 export const caseKicker = (c: CaseFile) => c.topic?.kicker ?? c.patient.setting;
 /** Short tag for chips, e.g. "45F" or "Chest pain" */
-export const caseTag = (c: CaseFile) => c.topic?.title ?? `${c.patient.age}${c.patient.sex === 'male' ? 'M' : 'F'}`;
+export const caseTag = (c: CaseFile) => c.topic?.title ?? c.episode?.when ?? `${c.patient.age}${c.patient.sex === 'male' ? 'M' : 'F'}`;
 
 export const programKey = (presentationId: string, sectionId: string) => `${presentationId}:${sectionId}`;
 
@@ -148,10 +149,13 @@ export function combosFor(p: Presentation): Drill[] {
   return p.combos.map((c) => comboDrill(p, c));
 }
 
-/** The patients a drill draws from */
+/** The patients a drill draws from (follow-up episodes only appear where a section lists them) */
 export function casesForDrill(p: Presentation, d: Drill): CaseFile[] {
-  return d.caseIds ? p.cases.filter((c) => d.caseIds!.includes(c.id)) : p.cases;
+  return d.caseIds ? p.cases.filter((c) => d.caseIds!.includes(c.id)) : p.cases.filter((c) => !c.episode);
 }
+
+/** The people in a presentation (not their follow-up episodes, not syllabus topics) */
+export const patientsOf = (p: Presentation) => p.cases.filter((c) => !c.episode && !c.topic);
 
 /** Find a flashcard question (a viva question or a follow-up with an id) */
 export function findQuestion(

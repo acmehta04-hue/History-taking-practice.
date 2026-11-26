@@ -51,6 +51,10 @@ const light = {
   bubbleMe: '#17181C',
   bubbleMeInk: '#FFFFFF',
   bubbleThem: '#FFFFFF',
+  /** ECG paper: a pale pink grid, as on a real strip */
+  ecg: { paper: '#FFF6F3', minor: '#F6DAD4', major: '#E9B2A8', trace: '#17181C' },
+  /** Radiographs are the same in both themes: air is black, soft tissue grey, bone white */
+  xray: { bg: '#050506', soft: '#4A4D53', softLight: '#62666D', bone: '#D8DADF', gas: '#0E0F11', fold: '#7D828A', label: '#C9CCD2' },
   tones: tonesLight,
 };
 
@@ -77,6 +81,8 @@ const dark: typeof light = {
   bubbleMe: '#C6F36B',
   bubbleMeInk: '#17181C',
   bubbleThem: '#24262C',
+  ecg: { paper: '#1F1B1C', minor: '#352B2A', major: '#56403C', trace: '#F2F2F4' },
+  xray: { bg: '#050506', soft: '#4A4D53', softLight: '#62666D', bone: '#D8DADF', gas: '#0E0F11', fold: '#7D828A', label: '#C9CCD2' },
   tones: tonesDark,
 };
 

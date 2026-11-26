@@ -77,6 +77,10 @@ function hash(s: string): number {
 
 /** The patients for a set: rotating sections cycle through every topic, others pick by difficulty */
 export function casesForSet(cases: CaseFile[], section: SectionDef | undefined, stage: Stage, setsCompleted: number): CaseFile[] {
+  if (section?.ordered && section.caseIds) {
+    const ids = section.caseIds;
+    return [...cases].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  }
   return section?.rotate ? pickRotating(cases, setsCompleted) : pickCasesForStage(cases, stage, setsCompleted);
 }
 

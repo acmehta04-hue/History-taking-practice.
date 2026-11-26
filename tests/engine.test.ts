@@ -4,21 +4,24 @@ import { describe, it } from 'node:test';
 
 import { libraryById } from '../src/content/library';
 import { abdominalPain } from '../src/content/presentations/abdominal-pain';
+import { changeBowelHabit } from '../src/content/presentations/change-bowel-habit';
 import { lowMood } from '../src/content/presentations/low-mood';
 import { palpitations } from '../src/content/presentations/palpitations';
-import type { CaseFile, ChecklistItem, FollowUp, Presentation, SectionDef } from '../src/content/types';
+import type { CaseFile, ChecklistItem, FollowUp, Presentation, ResultPanel, SectionDef } from '../src/content/types';
 import { depressionDive } from '../src/content/deepdives/depression';
 import { matchEntry, matchQuestion, normalise, patientReply, splitEntry } from '../src/engine/matcher';
 import { activePlacement, type CalendarEvent, daysBetween, monthGrid, nextExam } from '../src/engine/calendar';
 import { nextLevel, pickCases } from '../src/engine/progression';
 import { comboReadiness, nextUp } from '../src/engine/recommend';
-import { extraQuestions, pickCasesForStage, stageFor, synthesisQuestion, xid } from '../src/engine/stages';
+import { casesForSet, extraQuestions, pickCasesForStage, stageFor, synthesisQuestion, xid } from '../src/engine/stages';
 import { casesForDrill, checklistFor, findQuestion, getDrill, presentationById, presentations } from '../src/content';
 import { counselTurn, initialCounselState } from '../src/engine/counsel';
 import { cardResults, dueCards, gradeCard, questionScores } from '../src/engine/flashcards';
 import { scoreRep } from '../src/engine/scoring';
+import { bloodFlag, news2 } from '../src/engine/news2';
+import { ecgTrace, measuredRate } from '../src/engine/ecg';
 
-const ALL: Presentation[] = [abdominalPain, palpitations, lowMood, depressionDive];
+const ALL: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, depressionDive];
 const listOf = (fu: FollowUp | FollowUp[]) => (Array.isArray(fu) ? fu : [fu]);
 const section = (p: Presentation, id: string) => p.sections.find((s) => s.id === id)!;
 const ids = (items: ChecklistItem[]) => items.map((i) => i.id).sort();
@@ -185,7 +188,9 @@ describe('content integrity', () => {
       const source = p.deepDive ? presentationById[p.deepDive.source] : undefined;
       const interviewItems = [...p.sections, ...(source?.sections ?? [])].flatMap((s) => s.checklist ?? []);
       const itemIds = new Set(interviewItems.map((i) => i.id));
-      const casesFor = (s: SectionDef): CaseFile[] => (s.caseIds ? p.cases.filter((c) => s.caseIds!.includes(c.id)) : p.cases);
+      const casesFor = (s: SectionDef): CaseFile[] =>
+        s.caseIds ? p.cases.filter((c) => s.caseIds!.includes(c.id)) : p.cases.filter((c) => !c.episode);
+      const patients = p.cases.filter((c) => !c.episode);
       const questionsOf = (c: CaseFile): FollowUp[] => [
         ...(c.twist ? [c.twist] : []),
         ...Object.values(c.followUps ?? {}).flatMap(listOf),
@@ -301,10 +306,10 @@ describe('content integrity', () => {
 
       if (p.kind !== 'deepdive') {
         it('every patient has a Challenge twist', () => {
-          for (const c of p.cases) assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
+          for (const c of patients) assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
         });
         it('every patient has viva questions at all three tiers', () => {
-          for (const c of p.cases) {
+          for (const c of patients) {
             const tiers = new Set((c.viva ?? []).map((q) => q.tier));
             assert.deepEqual([...tiers].sort(), [1, 2, 3], `${c.id} viva tiers`);
             assert.ok(
@@ -520,5 +525,102 @@ describe('counselling patient', () => {
     const r1 = counselTurn({ gained: [], covered: new Set(), c: arthur, state: { next: 1, open: 0, openTurns: 0, turn: 2 } });
     const r2 = counselTurn({ gained: [], covered: new Set(), c: arthur, state: r1.state });
     assert.match(r2.reply, /still not sure/);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Results: NEWS2, bloods, ECGs; follow-up episodes                     */
+/* ------------------------------------------------------------------ */
+
+describe('NEWS2', () => {
+  const normal = { rr: 16, spo2: 98, sbp: 124, dbp: 78, hr: 72, acvpu: 'A' as const, temp: 36.8 };
+  it('scores a normal set of obs as 0', () => {
+    assert.equal(news2(normal).total, 0);
+    assert.equal(news2(normal).risk, 'low');
+  });
+  it('scores each band edge', () => {
+    assert.equal(news2({ ...normal, rr: 21 }).parts.rr, 2);
+    assert.equal(news2({ ...normal, rr: 25 }).parts.rr, 3);
+    assert.equal(news2({ ...normal, spo2: 95 }).parts.spo2, 1);
+    assert.equal(news2({ ...normal, spo2: 91 }).parts.spo2, 3);
+    assert.equal(news2({ ...normal, sbp: 100 }).parts.sbp, 2);
+    assert.equal(news2({ ...normal, sbp: 90 }).parts.sbp, 3);
+    assert.equal(news2({ ...normal, hr: 111 }).parts.hr, 2);
+    assert.equal(news2({ ...normal, hr: 131 }).parts.hr, 3);
+    assert.equal(news2({ ...normal, temp: 38.1 }).parts.temp, 1);
+    assert.equal(news2({ ...normal, temp: 39.1 }).parts.temp, 2);
+    assert.equal(news2({ ...normal, temp: 35.0 }).parts.temp, 3);
+  });
+  it('adds 2 for oxygen and uses scale 2 when asked', () => {
+    assert.equal(news2({ ...normal, o2: '2 L/min' }).total, 2);
+    assert.equal(news2({ ...normal, spo2: 90, scale2: true }).parts.spo2, 0);
+    assert.equal(news2({ ...normal, spo2: 97, scale2: true, o2: '28% Venturi' }).parts.spo2, 3);
+    assert.equal(news2({ ...normal, spo2: 97, scale2: true }).parts.spo2, 0);
+  });
+  it('any single 3 gives a low-medium (urgent ward) response; 5+ medium; 7+ high', () => {
+    assert.equal(news2({ ...normal, acvpu: 'C' }).risk, 'low-medium');
+    assert.equal(news2({ ...normal, rr: 22, hr: 112, sbp: 104 }).risk, 'medium');
+    assert.equal(news2({ ...normal, rr: 24, spo2: 94, sbp: 98, hr: 128, temp: 38.6 }).total, 8);
+  });
+  it('flags bloods outside the range', () => {
+    assert.equal(bloodFlag({ test: 'K', value: 3.0, low: 3.5, high: 5.3 }), 'L');
+    assert.equal(bloodFlag({ test: 'CRP', value: 286, high: 5 }), 'H');
+    assert.equal(bloodFlag({ test: 'Na', value: 140, low: 133, high: 146 }), undefined);
+  });
+});
+
+describe('ECG strips', () => {
+  it('draws the rate you ask for', () => {
+    for (const rate of [60, 112, 150]) assert.ok(Math.abs(measuredRate(ecgTrace({ rate, rhythm: 'sinus' })) - rate) <= 3, `rate ${rate}`);
+  });
+  it('makes AF irregular and sinus regular', () => {
+    const gaps = (b: number[]) => b.slice(1).map((x, i) => x - b[i]);
+    const spread = (g: number[]) => Math.max(...g) - Math.min(...g);
+    assert.ok(spread(gaps(ecgTrace({ rate: 130, rhythm: 'af' }).beats)) > 0.1);
+    assert.ok(spread(gaps(ecgTrace({ rate: 130, rhythm: 'sinus' }).beats)) < 0.001);
+  });
+  it('is the same every time (no flicker between renders)', () => {
+    assert.deepEqual(ecgTrace({ rate: 132, rhythm: 'af' }).beats, ecgTrace({ rate: 132, rhythm: 'af' }).beats);
+  });
+});
+
+describe('follow-up episodes', () => {
+  const journey = getDrill('change-bowel-habit', 'journey')!;
+  it('runs Robert’s visits in order, every set', () => {
+    const cases = casesForDrill(changeBowelHabit, journey);
+    for (const setsDone of [0, 1, 4])
+      assert.deepEqual(
+        casesForSet(cases, journey.sections[0], stageFor(setsDone), setsDone).map((c) => c.id),
+        ['crc_results', 'crc_leak', 'crc_sbo'],
+      );
+  });
+  it('keeps episodes out of the ordinary blocks', () => {
+    const hpc = getDrill('change-bowel-habit', 'hpc')!;
+    assert.ok(casesForDrill(changeBowelHabit, hpc).every((c) => !c.episode));
+  });
+  it('every episode belongs to a real patient', () => {
+    for (const p of ALL)
+      for (const c of p.cases.filter((x) => x.episode))
+        assert.ok(
+          p.cases.some((x) => x.id === c.episode!.of && !x.episode),
+          c.id,
+        );
+  });
+  it('any NEWS2 score written in an answer matches the obs on screen', () => {
+    for (const p of ALL)
+      for (const c of p.cases) {
+        const check = (panels: ResultPanel[] | undefined, items: { label: string }[]) => {
+          const obs = panels?.find((x) => x.kind === 'obs');
+          for (const it of items) {
+            const m = it.label.match(/NEWS2 (\d+)/);
+            if (m) {
+              assert.ok(obs && obs.kind === 'obs', `${c.id}: "${it.label}" but no obs`);
+              assert.equal(news2(obs.obs).total, Number(m[1]), `${c.id}: "${it.label}"`);
+            }
+          }
+        };
+        for (const [sec, list] of Object.entries(c.reasoning)) check(c.results?.[sec], list);
+        for (const fu of Object.values(c.followUps ?? {}).flatMap(listOf)) check(fu.results, fu.items);
+      }
   });
 });

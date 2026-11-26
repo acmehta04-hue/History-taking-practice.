@@ -502,6 +502,80 @@ export const library: LibraryCard[] = [
     ],
     verify: ['BNF', 'The PSA practice papers', 'MHRA Drug Safety Updates'],
   },
+  {
+    id: 'bowel-habit',
+    title: 'Change in bowel habit: sorting it out',
+    kicker: 'Approach to a common presentation',
+    specialtyId: 'gastro',
+    minutes: 4,
+    blocks: [
+      {
+        heading: 'Red flags first',
+        points: [
+          'Blood (mixed with stool is more worrying than bright red on the paper), weight loss, symptoms that wake them at night, iron deficiency anaemia, a mass.',
+          'Age: a new change over 60 is colorectal cancer until proven otherwise; women over 50 with new IBS-type symptoms need a CA-125 (ovarian cancer).',
+          'Family history of bowel or ovarian cancer, IBD or coeliac disease.',
+        ],
+      },
+      {
+        heading: 'Which test, for whom',
+        points: [
+          'Symptoms that could be colorectal cancer: FIT first in primary care. 10 µg Hb/g or more means a suspected cancer referral (NICE DG56). A rectal mass is referred whatever the FIT.',
+          'Younger adults with diarrhoea: faecal calprotectin separates inflammatory bowel disease from IBS and can save a colonoscopy.',
+          'Everyone with IBS-type symptoms: FBC, ESR or CRP and coeliac serology (tTG-IgA with total IgA, while eating gluten).',
+          'IBS doesn’t need TFTs, ultrasound or a colonoscopy if there are no red flags (NICE CG61).',
+        ],
+      },
+      {
+        heading: 'Patterns',
+        points: [
+          'Cancer: older, change in habit, blood, weight loss, tenesmus (rectal), iron deficiency.',
+          'IBD: younger, bloody diarrhoea, urgency, mucus, mouth ulcers, joints, eyes, skin.',
+          'Coeliac: bloating, pale floating stools, iron or folate deficiency, autoimmune disease, an itchy blistering rash.',
+          'IBS: pain relieved by opening the bowels, bloating, mucus, changing form, for 6 months, with none of the above.',
+        ],
+      },
+    ],
+    verify: [
+      'NICE NG12 (suspected cancer)',
+      'NICE DG56 (FIT, 2023)',
+      'NICE CG61 (IBS)',
+      'NICE NG20 (coeliac disease)',
+      'NICE DG11 (faecal calprotectin)',
+    ],
+  },
+  {
+    id: 'news2',
+    title: 'NEWS2 in two minutes',
+    kicker: 'Spotting the sick patient',
+    specialtyId: 'acute',
+    minutes: 2,
+    blocks: [
+      {
+        heading: 'The seven parameters (each scores 0–3)',
+        points: [
+          'Respiratory rate: 12–20 scores 0; 21–24 scores 2; 25 or more, or 8 or less, scores 3.',
+          'SpO₂ (scale 1): 96% or more scores 0; 94–95 scores 1; 92–93 scores 2; 91 or less scores 3. Scale 2 is for target 88–92% (hypercapnic respiratory failure).',
+          'Air or oxygen: any supplemental oxygen scores 2.',
+          'Systolic BP: 111–219 scores 0; 101–110 scores 1; 91–100 scores 2; 90 or less, or 220 or more, scores 3.',
+          'Pulse: 51–90 scores 0; 41–50 or 91–110 scores 1; 111–130 scores 2; 131 or more, or 40 or less, scores 3.',
+          'Consciousness: alert scores 0; new confusion, or responding only to voice or pain, or unresponsive, scores 3.',
+          'Temperature: 36.1–38.0 scores 0; 35.1–36.0 or 38.1–39.0 scores 1; 39.1 or more scores 2; 35.0 or less scores 3.',
+        ],
+      },
+      {
+        heading: 'What the score means',
+        points: [
+          '0–4: ward-based response.',
+          'A 3 in any single parameter: urgent ward-based review by a clinician.',
+          '5–6: urgent response, a clinician competent in acute illness.',
+          '7 or more: emergency response, a team with critical care skills.',
+          'NEWS2 is a trigger, not a diagnosis: it tells you how fast to act, then you assess A to E.',
+        ],
+      },
+    ],
+    verify: ['Royal College of Physicians: National Early Warning Score (NEWS) 2, 2017'],
+  },
 ];
 
 export const libraryById = Object.fromEntries(library.map((c) => [c.id, c]));

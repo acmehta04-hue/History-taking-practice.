@@ -125,6 +125,8 @@ export interface SectionDef {
   placeholder?: string;
   /** What each stage adds, when it differs from the defaults (syllabus drills have topics, not patients) */
   stageNotes?: Record<1 | 2 | 3, string>;
+  /** Every set runs its caseIds in this order (a patient's journey) */
+  ordered?: boolean;
 }
 
 export interface Patient {
@@ -135,6 +137,68 @@ export interface Patient {
   /** The patient's first words */
   opening: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Results: observations, bloods, ECGs and X-rays to interpret          */
+/* ------------------------------------------------------------------ */
+
+/** Observations, scored with NEWS2 (src/engine/news2.ts) */
+export interface Obs {
+  /** Breaths per minute */
+  rr: number;
+  /** Oxygen saturation, % */
+  spo2: number;
+  /** Oxygen being given, e.g. "2 L/min nasal cannulae"; leave out on room air */
+  o2?: string;
+  /** Use SpO2 scale 2 (target 88–92%, e.g. COPD with hypercapnic respiratory failure) */
+  scale2?: boolean;
+  sbp: number;
+  dbp: number;
+  /** Pulse, beats per minute */
+  hr: number;
+  /** A alert, C new confusion, V voice, P pain, U unresponsive */
+  acvpu: 'A' | 'C' | 'V' | 'P' | 'U';
+  /** °C */
+  temp: number;
+}
+
+export interface BloodRow {
+  test: string;
+  value: number | string;
+  unit?: string;
+  /** Reference range: a value outside it is flagged L or H */
+  low?: number;
+  high?: number;
+  /** An earlier result, for trends */
+  prev?: number | string;
+}
+
+/** A schematic rhythm strip, drawn by src/engine/ecg.ts */
+export interface EcgSpec {
+  rate: number;
+  rhythm: 'sinus' | 'af' | 'flutter';
+  qrs?: 'narrow' | 'broad';
+  st?: 'normal' | 'elevated' | 'depressed';
+  t?: 'normal' | 'peaked' | 'flat' | 'inverted';
+  /** U waves (e.g. low potassium) */
+  u?: boolean;
+  lead?: string;
+}
+
+export type XrayFinding = 'dilated-small-bowel' | 'dilated-large-bowel' | 'free-air';
+
+/** A schematic radiograph (not a real image) */
+export interface XraySpec {
+  view: 'axr' | 'cxr';
+  findings: XrayFinding[];
+}
+
+export type ResultPanel =
+  | { kind: 'obs'; title?: string; obs: Obs }
+  | { kind: 'bloods'; title?: string; rows: BloodRow[] }
+  | { kind: 'ecg'; title?: string; ecg: EcgSpec }
+  | { kind: 'xray'; title?: string; xray: XraySpec }
+  | { kind: 'report'; title: string; lines: string[] };
 
 export interface FollowUp {
   /** Set on questions worth reviewing later as viva flashcards */
@@ -151,6 +215,8 @@ export interface FollowUp {
   distractors?: Distractor[];
   /** Only asked from this stage on (2 = Application, 3 = Challenge) */
   minStage?: 2 | 3;
+  /** Observations, bloods, ECG or imaging to interpret, shown under the question */
+  results?: ResultPanel[];
 }
 
 /**
@@ -201,6 +267,13 @@ export interface CaseFile {
   pearl: string;
   /** Free-form flags used by ChecklistItem.appliesTo, e.g. "on-ssri" */
   tags?: string[];
+  /** Results shown with the vignette, keyed by section id */
+  results?: Record<string, ResultPanel[]>;
+  /**
+   * A later visit by the same patient (a follow-up episode). Episodes only
+   * appear in sections that list them in caseIds, in order.
+   */
+  episode?: { of: string; order: number; when: string };
   /** 1 = classic textbook, 2 = some ambiguity, 3 = atypical / high-stakes. Harder patients come in later sets. */
   difficulty: 1 | 2 | 3;
   /** Challenge-set twist: new information that forces a re-think (asked after reasoning reps in set 3+) */

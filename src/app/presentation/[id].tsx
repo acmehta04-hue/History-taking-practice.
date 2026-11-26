@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { DrillCard } from '@/components/DrillCard';
 import { Card, Chip, Icon, Row, Screen, SectionHeader, TopBar, Txt } from '@/components/ui';
-import { combosFor, presentationById, singlesFor, specialties, specialtyById, spotDrillFor } from '@/content';
+import { combosFor, patientsOf, presentationById, singlesFor, specialties, specialtyById, spotDrillFor } from '@/content';
 import { comboReadiness } from '@/engine/recommend';
 import { useStore } from '@/store';
 import { space, type, useTheme } from '@/theme';
@@ -36,7 +36,7 @@ export default function PresentationScreen() {
           {p.title}
         </Txt>
         <Txt color={tone.ink}>
-          {p.cases.length} patients rotate through each drill. A set is 3 reps — 3 patients, the same block of the history.
+          {patientsOf(p).length} patients rotate through each drill. A set is 3 reps — 3 patients, the same block of the history.
         </Txt>
         <Row gap={6} style={{ flexWrap: 'wrap' }}>
           {p.ukmla.map((u) => {
