@@ -2,18 +2,29 @@
 
 The product plan (design, content, strategy, revenue) is kept in a shared doc. This file covers the engineering side only.
 
-## Phase 1 — MVP (this repo, v0.3) ✅
+## Phase 1 — MVP (this repo, v0.4) ✅
 
 - Expo app for iOS, Android and web from one codebase
 - Sets × reps drill loop with three assistance levels and adaptive fading
 - Offline keyword matcher and scripted patients
 - Scoring: accuracy, independence, level, speed, red flags
-- Progress dashboard; teaching library
-- 3 presentations, 10 patients, 23 single-block drills + 11 combined drills, 1 deep dive (4 sets, 5 patients), 13 teaching cards
-- Challenge stages (Foundation → Application → Challenge), combined drills, and a placement/exam calendar that steers recommendations
-- Viva blocks (recall → why with probes → data), viva flashcards with spaced review
-- Deep dives by UKMLA condition: purpose-tagged history, management ladder, counselling with a patient who asks back, PSA-style prescribing (first: depression → sertraline)
-- Engine and content tests (99)
+- Progress dashboard; teaching library (15 cards)
+- 4 full presentations (13 patients), 1 deep dive, combined drills, challenge stages, viva blocks with flashcards, a placement/exam calendar
+- The UKMLA syllabus map: 24 areas, 131 presentations, 427 conditions, 176 investigations, 117 drugs to know
+- Generated syllabus drills for every area: differentials sprint, spot the diagnosis, spot the cause for every presentation
+- Results panels: obs with NEWS2, bloods, ECG strips, schematic X-rays; follow-up visits (Robert’s journey)
+- Drug drills: warfarin, metformin, levothyroxine, prednisolone, methotrexate, alendronic acid
+- Engine and content tests (227)
+
+## Next content (Phase 1.5)
+
+Highest value first:
+
+1. Full history drills for the commonest OSCE presentations still without one: chest pain, breathlessness, headache, cough, back pain, fever, falls, confusion.
+2. Management (`mx`) for each syllabus condition, so spot the diagnosis can ask “first-line treatment?” at Challenge.
+3. More drug profiles, starting with high-risk PSA drugs: insulin, gentamicin, opioids, DOACs, lithium, antiepileptics, antibiotics.
+4. More follow-up journeys with results: DKA on the ward, an AKI on ACE inhibitors, a COPD exacerbation with an ABG.
+5. Clinical review of the whole catalogue against the current MLA content map, NICE CKS and the BNF.
 
 ## Phase 2 — AI patient and AI feedback
 
