@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { libraryById } from '../src/content/library';
 import { abdominalPain } from '../src/content/presentations/abdominal-pain';
 import { changeBowelHabit } from '../src/content/presentations/change-bowel-habit';
+import { headache } from '../src/content/presentations/headache';
 import { lowMood } from '../src/content/presentations/low-mood';
 import { palpitations } from '../src/content/presentations/palpitations';
 import type { CaseFile, ChecklistItem, FollowUp, Presentation, ResultPanel, SectionDef } from '../src/content/types';
@@ -22,7 +23,7 @@ import { scoreRep } from '../src/engine/scoring';
 import { bloodFlag, news2 } from '../src/engine/news2';
 import { ecgTrace, measuredRate } from '../src/engine/ecg';
 
-const ALL: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, depressionDive, ...drugDrills];
+const ALL: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, headache, depressionDive, ...drugDrills];
 const listOf = (fu: FollowUp | FollowUp[]) => (Array.isArray(fu) ? fu : [fu]);
 const section = (p: Presentation, id: string) => p.sections.find((s) => s.id === id)!;
 const ids = (items: ChecklistItem[]) => items.map((i) => i.id).sort();

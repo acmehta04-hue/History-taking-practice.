@@ -5,6 +5,7 @@ import { drugDrills, drugProfiles } from './drugs';
 import { library, libraryById } from './library';
 import { abdominalPain } from './presentations/abdominal-pain';
 import { changeBowelHabit } from './presentations/change-bowel-habit';
+import { headache } from './presentations/headache';
 import { lowMood } from './presentations/low-mood';
 import { palpitations } from './presentations/palpitations';
 import type { CaseFile, ChecklistItem, ComboDef, FollowUp, PlannedDeepDive, Presentation, SectionDef, Specialty } from './types';
@@ -32,7 +33,7 @@ export { library, libraryById, areaDrills, areaDrillFor, spotDrillFor, drugDrill
 export const specialties: Specialty[] = areas;
 
 /** Hand-written presentations: full history drills with scripted patients */
-export const presentations: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood];
+export const presentations: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, headache];
 
 /** Deep dives: a UKMLA condition walked from history to prescribing */
 export const deepDives: Presentation[] = [depressionDive];

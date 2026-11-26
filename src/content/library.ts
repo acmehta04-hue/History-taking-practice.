@@ -576,6 +576,90 @@ export const library: LibraryCard[] = [
     ],
     verify: ['Royal College of Physicians: National Early Warning Score (NEWS) 2, 2017'],
   },
+  {
+    id: 'headache-red-flags',
+    title: 'Headache: red flags and what they mean',
+    kicker: 'Neurology',
+    specialtyId: 'neuro',
+    minutes: 4,
+    blocks: [
+      {
+        heading: 'Ask every patient',
+        points: [
+          'Thunderclap onset (worst within a minute): subarachnoid haemorrhage until proven otherwise.',
+          'Fever, neck stiffness, non-blanching rash: meningitis.',
+          'Focal symptoms, seizures, confusion or drowsiness: a structural cause.',
+          'Worse lying down, in the morning, or on coughing and straining, with vomiting: raised intracranial pressure.',
+          'Over 50: new headache, jaw claudication, scalp tenderness, visual symptoms: giant cell arteritis.',
+          'Cancer, immunosuppression, head injury (especially on anticoagulants), pregnancy or postpartum, carbon monoxide.',
+        ],
+      },
+      {
+        heading: 'Act on them',
+        points: [
+          'Thunderclap: CT head now. Normal within 6 hours rules out SAH; after 6 hours, LP at least 12 hours after onset for xanthochromia (NICE NG228).',
+          'Suspected meningitis in the community: IM or IV benzylpenicillin and a blue-light transfer if there is a non-blanching rash.',
+          'GCA: start prednisolone the same day (IV methylprednisolone if vision is affected) and refer urgently; don’t wait for the biopsy.',
+          'Papilloedema: MRI with venography before any LP.',
+          'Pregnancy over 20 weeks with headache and visual symptoms: check BP and urine for pre-eclampsia.',
+        ],
+      },
+      {
+        heading: 'Always examine',
+        points: [
+          'Blood pressure and temperature.',
+          'Fundoscopy for papilloedema.',
+          'Neurological examination, including cranial nerves.',
+          'Temporal arteries in anyone over 50.',
+        ],
+      },
+    ],
+    verify: [
+      'NICE CG150 Headaches in over 12s',
+      'NICE NG228 Subarachnoid haemorrhage (2022)',
+      'BSR guideline for GCA (2020)',
+      'NICE CKS Headache: assessment',
+    ],
+  },
+  {
+    id: 'migraine',
+    title: 'Migraine: treat the attack, prevent, avoid overuse',
+    kicker: 'Neurology',
+    specialtyId: 'neuro',
+    minutes: 3,
+    blocks: [
+      {
+        heading: 'Diagnose',
+        points: [
+          'Attacks of 4–72 hours: one-sided, throbbing, moderate to severe, worse with activity, with nausea or light and noise sensitivity.',
+          'Aura: fully reversible visual or sensory symptoms spreading over 5–60 minutes, usually before the headache.',
+          'A clinical diagnosis: no imaging if the examination is normal and there are no red flags.',
+        ],
+      },
+      {
+        heading: 'Treat',
+        points: [
+          'Acute: an oral triptan with an NSAID or paracetamol, taken early; add an antiemetic. Avoid opioids and ergots.',
+          'Prophylaxis if attacks are frequent or disabling: propranolol, amitriptyline or topiramate (teratogenic: highly effective contraception and the MHRA Pregnancy Prevention Programme).',
+          'Migraine with aura: no combined hormonal contraception (UKMEC 4, stroke risk).',
+          'Menstrual migraine and pregnancy need tailored plans: paracetamol first line in pregnancy.',
+        ],
+      },
+      {
+        heading: 'Medication overuse headache',
+        points: [
+          'Headache on 15 or more days a month with simple painkillers on 15+ days, or triptans, opioids or combinations on 10+ days, for over 3 months.',
+          'Treat by stopping the overused drugs for at least a month (abruptly, apart from opioids which may need tapering); warn it gets worse before it gets better.',
+        ],
+      },
+    ],
+    verify: [
+      'NICE CG150 Headaches in over 12s',
+      'NICE CKS Migraine',
+      'UKMEC 2016 (updated 2019)',
+      'MHRA topiramate Pregnancy Prevention Programme (2024)',
+    ],
+  },
 ];
 
 export const libraryById = Object.fromEntries(library.map((c) => [c.id, c]));
