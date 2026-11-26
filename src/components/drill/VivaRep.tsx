@@ -41,7 +41,9 @@ export function VivaRep({
         Viva · {STAGES[stage].name}
       </Txt>
       <Txt style={type.heading}>
-        {patientCase.patient.name}, {patientCase.patient.age}: {patientCase.diagnosis}
+        {patientCase.topic
+          ? `${patientCase.diagnosis}: ${patientCase.topic.title}`
+          : `${patientCase.patient.name}, ${patientCase.patient.age}: ${patientCase.diagnosis}`}
       </Txt>
       <Txt style={type.small} color="soft">
         {patientCase.summary}

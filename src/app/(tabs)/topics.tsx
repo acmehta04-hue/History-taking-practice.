@@ -8,6 +8,8 @@ import {
   conditions,
   conditionsInArea,
   deepDives,
+  drugCatalogue,
+  drugDrills,
   plannedDeepDives,
   patientsOf,
   presentations,
@@ -22,7 +24,7 @@ import { mastery, specialtyMastery } from '@/engine/recommend';
 import { useStore } from '@/store';
 import { radius, space, type, useTheme } from '@/theme';
 
-type Mode = 'area' | 'condition';
+type Mode = 'area' | 'condition' | 'drug';
 
 export default function Topics() {
   const t = useTheme();
@@ -50,15 +52,20 @@ export default function Topics() {
         <Row gap={6} style={{ flexWrap: 'wrap' }}>
           <Chip label="By area" active={mode === 'area'} onPress={() => setMode('area')} />
           <Chip label="By condition (deep dive)" active={mode === 'condition'} onPress={() => setMode('condition')} />
+          <Chip label="Drugs" active={mode === 'drug'} onPress={() => setMode('drug')} />
         </Row>
         <Txt color="soft">
           {mode === 'area'
             ? 'The whole UKMLA syllabus: every area, every presentation, and the conditions each could be.'
-            : 'Pick a UKMLA condition and follow it through: a history where every question has a reason, the management ladder, a counselling session, then prescribing (PSA style).'}
+            : mode === 'drug'
+              ? 'Drugs you need to know for the UKMLA and the PSA: a viva, a counselling session and PSA-style prescribing for each.'
+              : 'Pick a UKMLA condition and follow it through: a history where every question has a reason, the management ladder, a counselling session, then prescribing (PSA style).'}
         </Txt>
       </View>
 
-      {mode === 'condition' ? (
+      {mode === 'drug' ? (
+        <DrugList />
+      ) : mode === 'condition' ? (
         <>
           {deepDives.map((p) => {
             const sp = specialtyById[p.specialtyId];
@@ -293,5 +300,69 @@ function SearchResults({ results }: { results: { presentations: typeof syllabusP
         </View>
       ) : null}
     </View>
+  );
+}
+
+function DrugList() {
+  const t = useTheme();
+  const programs = useStore((s) => s.programs);
+  const built = new Set(drugDrills.map((p) => p.id.replace(/^drug-/, '')));
+  const byArea = specialties.map((a) => ({ a, drugs: drugCatalogue.filter((d) => d.areaId === a.id) })).filter((x) => x.drugs.length);
+  return (
+    <>
+      {drugDrills.map((p) => {
+        const sp = specialtyById[p.specialtyId];
+        const tone = t.tones[sp.tone];
+        const m = p.sections.reduce((a, sec) => a + mastery(programs[programKey(p.id, sec.id)]), 0) / p.sections.length;
+        return (
+          <Card
+            key={p.id}
+            tone={sp.tone}
+            onPress={() => router.push({ pathname: '/drug/[id]', params: { id: p.id.replace(/^drug-/, '') } })}
+            accessibilityLabel={`${p.title} drug drills`}
+            style={{ gap: space.sm }}>
+            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt style={type.tiny} color={tone.ink}>
+                  {p.drug?.drugClass}
+                </Txt>
+                <Txt style={type.title} color={tone.ink}>
+                  {p.title}
+                </Txt>
+              </View>
+              <Icon name="arrow-forward-circle" size={28} color={tone.ink} />
+            </Row>
+            <Row gap={6} style={{ flexWrap: 'wrap' }}>
+              {p.sections.map((sec) => (
+                <Chip key={sec.id} label={sec.short} active={!!programs[programKey(p.id, sec.id)]} />
+              ))}
+            </Row>
+            {m > 0 ? <ProgressBar value={m} color={tone.strong} height={6} /> : null}
+          </Card>
+        );
+      })}
+      <Txt style={type.heading}>All {drugCatalogue.length} drugs to know</Txt>
+      <Txt style={type.small} color="soft">
+        Drugs with drills are dark; the rest are coming soon. Tap one to see it.
+      </Txt>
+      {byArea.map(({ a, drugs }) => (
+        <View key={a.id} style={{ gap: 6 }}>
+          <Txt style={type.tiny} color="faint">
+            {a.short}
+          </Txt>
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {drugs.map((d) => (
+              <Chip
+                key={d.id}
+                label={d.name}
+                active={built.has(d.id)}
+                dim={!built.has(d.id)}
+                onPress={() => router.push({ pathname: '/drug/[id]', params: { id: d.id } })}
+              />
+            ))}
+          </Row>
+        </View>
+      ))}
+    </>
   );
 }

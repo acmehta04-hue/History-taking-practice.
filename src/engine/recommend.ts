@@ -3,6 +3,7 @@ import {
   areaDrills,
   combosFor,
   deepDives,
+  drugDrills,
   type Drill,
   drillSourcesFor,
   presentations,
@@ -28,7 +29,7 @@ type Programs = Record<string, ProgramState>;
 
 /** Hand-written drills first, then the syllabus drills (sprint and spot for every area, then per-presentation spot drills) */
 function all(programs: Programs, specialtyId?: string): Pick[] {
-  return [...presentations, ...deepDives, ...areaDrills]
+  return [...presentations, ...deepDives, ...drugDrills, ...areaDrills]
     .filter((p) => !specialtyId || p.specialtyId === specialtyId)
     .flatMap((p) =>
       [...singlesFor(p), ...combosFor(p)].map((d) => ({

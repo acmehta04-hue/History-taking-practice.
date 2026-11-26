@@ -9,6 +9,7 @@ import { lowMood } from '../src/content/presentations/low-mood';
 import { palpitations } from '../src/content/presentations/palpitations';
 import type { CaseFile, ChecklistItem, FollowUp, Presentation, ResultPanel, SectionDef } from '../src/content/types';
 import { depressionDive } from '../src/content/deepdives/depression';
+import { drugDrills } from '../src/content/drugs';
 import { matchEntry, matchQuestion, normalise, patientReply, splitEntry } from '../src/engine/matcher';
 import { activePlacement, type CalendarEvent, daysBetween, monthGrid, nextExam } from '../src/engine/calendar';
 import { nextLevel, pickCases } from '../src/engine/progression';
@@ -21,7 +22,7 @@ import { scoreRep } from '../src/engine/scoring';
 import { bloodFlag, news2 } from '../src/engine/news2';
 import { ecgTrace, measuredRate } from '../src/engine/ecg';
 
-const ALL: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, depressionDive];
+const ALL: Presentation[] = [abdominalPain, changeBowelHabit, palpitations, lowMood, depressionDive, ...drugDrills];
 const listOf = (fu: FollowUp | FollowUp[]) => (Array.isArray(fu) ? fu : [fu]);
 const section = (p: Presentation, id: string) => p.sections.find((s) => s.id === id)!;
 const ids = (items: ChecklistItem[]) => items.map((i) => i.id).sort();
@@ -304,7 +305,7 @@ describe('content integrity', () => {
         }
       });
 
-      if (p.kind !== 'deepdive') {
+      if (!p.kind || p.kind === 'presentation') {
         it('every patient has a Challenge twist', () => {
           for (const c of patients) assert.ok((c.twist?.items.length ?? 0) >= 4, `${c.id} twist`);
         });
@@ -623,4 +624,29 @@ describe('follow-up episodes', () => {
         for (const fu of Object.values(c.followUps ?? {}).flatMap(listOf)) check(fu.results, fu.items);
       }
   });
+});
+
+describe('drug drills', () => {
+  for (const p of drugDrills) {
+    it(`${p.title}: every viva topic starts with recall, and the set covers tiers 1–3 with a probe`, () => {
+      const topics = p.cases.filter((c) => c.topic);
+      assert.equal(topics.length, 3);
+      for (const c of topics)
+        assert.ok(
+          (c.viva ?? []).some((q) => q.tier === 1),
+          `${c.id} has no recall question`,
+        );
+      const qs = topics.flatMap((c) => c.viva ?? []);
+      assert.deepEqual([...new Set(qs.map((q) => q.tier))].sort(), [1, 2, 3]);
+      assert.ok(qs.some((q) => q.probe));
+    });
+    it(`${p.title}: every prescription names the drug, dose, route and frequency`, () => {
+      for (const c of p.cases.filter((x) => !x.topic))
+        for (const id of ['rx_drug', 'rx_dose', 'rx_route', 'rx_freq'])
+          assert.ok(
+            c.reasoning.prescribe.some((i) => i.id === id),
+            `${c.id} missing ${id}`,
+          );
+    });
+  }
 });

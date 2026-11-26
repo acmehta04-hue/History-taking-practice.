@@ -300,9 +300,55 @@ export interface Presentation {
   /** Combined drills, unlocked once their blocks reach L2 */
   combos: ComboDef[];
   cases: CaseFile[];
-  /** 'deepdive' = a condition walked from history to prescribing; 'area' = generated syllabus drills for a UKMLA area */
-  kind?: 'presentation' | 'deepdive' | 'area';
+  /** 'deepdive' = a condition walked from history to prescribing; 'area' = generated syllabus drills for a UKMLA area; 'drug' = a drug's viva, counselling and prescribing drills */
+  kind?: 'presentation' | 'deepdive' | 'area' | 'drug';
   deepDive?: DeepDiveMeta;
+  drug?: DrugMeta;
+}
+
+/** What the drug page shows above the drills */
+export interface DrugMeta {
+  name: string;
+  drugClass: string;
+  summary: string;
+  /** Three exam-critical points: uses, safety, monitoring */
+  keyPoints: [string, string, string];
+  verify: string[];
+}
+
+/** A patient being started on the drug: counselled, then prescribed for */
+export interface DrugPatient {
+  id: string;
+  /** e.g. "Rheumatoid arthritis" */
+  indication: string;
+  patient: Patient;
+  /** Weight, renal function, other medicines, allergies: shown before prescribing */
+  summary: string;
+  difficulty: 1 | 2 | 3;
+  /** What they say back to each counselling point (missing ones fall back to the point's default) */
+  answers: Record<string, string>;
+  /** What they ask during counselling */
+  concerns: Concern[];
+  /** Turn on patient-specific counselling points (ChecklistItem.appliesTo) */
+  tags?: string[];
+  /** The prescription, one item per part (drug, dose, route, frequency…) */
+  rx: ReasonItem[];
+  rxDistractors?: Distractor[];
+  /** After prescribing: review, monitoring, results */
+  review: FollowUp[];
+  pearl: string;
+}
+
+/** Everything needed to generate a drug's drills (src/content/drugs) */
+export interface DrugProfile extends DrugMeta {
+  id: string;
+  /** Home area, for colour and where it is listed */
+  areaId: string;
+  /** Viva questions in three topics; each topic needs a recall question, and the set needs tiers 1–3 */
+  viva: { uses: VivaQuestion[]; safety: VivaQuestion[]; monitoring: VivaQuestion[] };
+  /** What a good counselling session covers (modelQuestion = the model statement) */
+  counsel: ChecklistItem[];
+  patients: DrugPatient[];
 }
 
 export interface DeepDiveMeta {

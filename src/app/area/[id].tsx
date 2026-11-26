@@ -9,6 +9,8 @@ import {
   conditionById,
   conditionsInArea,
   deepDives,
+  drugCatalogue,
+  drugDrills,
   getDrill,
   patientsOf,
   presentations,
@@ -49,6 +51,7 @@ export default function AreaScreen() {
   const sylPres = presentationsInArea(area.id);
   const conds = conditionsInArea(area.id).sort((a, b) => a.title.localeCompare(b.title));
   const shownConds = allConditions ? conds : conds.slice(0, 24);
+  const drugs = drugCatalogue.filter((d) => d.areaId === area.id);
 
   return (
     <Screen>
@@ -116,6 +119,37 @@ export default function AreaScreen() {
       </Txt>
       <DrillCard presentationId={drills.id} drill={sprint} tone={area.tone} icon="list-outline" />
       <DrillCard presentationId={drills.id} drill={spot} tone={area.tone} icon="flash-outline" />
+
+      {drugs.length ? (
+        <>
+          <SectionHeader title="Drugs" />
+          {drugDrills
+            .filter((p) => p.specialtyId === area.id)
+            .map((p) => (
+              <Card
+                key={p.id}
+                onPress={() => router.push({ pathname: '/drug/[id]', params: { id: p.id.replace(/^drug-/, '') } })}
+                style={{ gap: 4 }}>
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Txt style={type.heading}>{p.title}</Txt>
+                    <Txt style={type.small} color="soft">
+                      {p.drug?.drugClass} · viva, counselling and prescribing
+                    </Txt>
+                  </View>
+                  <Icon name="medkit-outline" size={24} />
+                </Row>
+              </Card>
+            ))}
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {drugs
+              .filter((d) => !drugDrills.some((p) => p.id === `drug-${d.id}`))
+              .map((d) => (
+                <Chip key={d.id} label={d.name} dim onPress={() => router.push({ pathname: '/drug/[id]', params: { id: d.id } })} />
+              ))}
+          </Row>
+        </>
+      ) : null}
 
       <SectionHeader title="Presentations: what could it be?" />
       <Txt style={type.small} color="soft">

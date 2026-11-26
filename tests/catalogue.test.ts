@@ -6,6 +6,7 @@ import {
   areas,
   catalogueProblems,
   conditionById,
+  drugCatalogue,
   conditions,
   syllabusPresentations,
   testById,
@@ -14,6 +15,7 @@ import {
 } from '../src/content/catalogue';
 import { areaDrills, spotDrillFor } from '../src/content/catalogue/drills';
 import { getDrill, presentationById, presentations } from '../src/content';
+import { drugProfiles } from '../src/content/drugs';
 import type { CaseFile, FollowUp, ReasonItem } from '../src/content/types';
 import { matchesAny, matchEntry, normalise } from '../src/engine/matcher';
 import { casesForSet, extraQuestions, pickRotating } from '../src/engine/stages';
@@ -205,5 +207,20 @@ describe('generated area drills', () => {
     for (let i = 0; i < sets; i++) for (const c of pickRotating(cs, i)) seen.add(c.id);
     assert.equal(seen.size, cs.length);
     assert.equal(casesForSet(cs, s, 3, 0).length, 3);
+  });
+});
+
+describe('drug catalogue', () => {
+  it('has unique ids and real areas', () => {
+    const ids = drugCatalogue.map((d) => d.id);
+    assert.equal(new Set(ids).size, ids.length);
+    for (const d of drugCatalogue) assert.ok(areaIds.has(d.areaId), `${d.id}: unknown area ${d.areaId}`);
+  });
+  it('lists every drug that has drills', () => {
+    for (const p of drugProfiles)
+      assert.ok(
+        drugCatalogue.some((d) => d.id === p.id),
+        `${p.id} is not in the catalogue`,
+      );
   });
 });

@@ -1,6 +1,7 @@
 import { areaDrillFor, areaDrills, spotDrillFor } from './catalogue/drills';
 import { areas } from './catalogue/areas';
 import { depressionDive } from './deepdives/depression';
+import { drugDrills, drugProfiles } from './drugs';
 import { library, libraryById } from './library';
 import { abdominalPain } from './presentations/abdominal-pain';
 import { changeBowelHabit } from './presentations/change-bowel-habit';
@@ -15,6 +16,7 @@ export {
   conditionById,
   conditions,
   conditionsInArea,
+  drugCatalogue,
   inSentence,
   presentationsInArea,
   presentationsWithCondition,
@@ -24,7 +26,7 @@ export {
   tests,
   weightIn,
 } from './catalogue';
-export { library, libraryById, areaDrills, areaDrillFor, spotDrillFor };
+export { library, libraryById, areaDrills, areaDrillFor, spotDrillFor, drugDrills, drugProfiles };
 
 /** The 24 UKMLA areas of clinical practice. Older code calls them specialties. */
 export const specialties: Specialty[] = areas;
@@ -44,7 +46,7 @@ export const plannedDeepDives: PlannedDeepDive[] = [
 
 /** Presentations and deep dives share one lookup (drills, summaries and the store key by id) */
 export const presentationById: Record<string, Presentation> = Object.fromEntries(
-  [...presentations, ...deepDives, ...areaDrills].map((p) => [p.id, p]),
+  [...presentations, ...deepDives, ...drugDrills, ...areaDrills].map((p) => [p.id, p]),
 );
 
 export const specialtyById: Record<string, Specialty> = Object.fromEntries(specialties.map((s) => [s.id, s]));
@@ -69,7 +71,7 @@ export function presentationsFor(specialtyId: string): Presentation[] {
 /** Every drillable presentation-like thing in an area: hand-written presentations, deep dives, then its syllabus drills */
 export function drillSourcesFor(areaId: string): Presentation[] {
   const area = areaDrillFor(areaId);
-  return [...presentations, ...deepDives].filter((p) => p.specialtyId === areaId).concat(area ? [area] : []);
+  return [...presentations, ...deepDives, ...drugDrills].filter((p) => p.specialtyId === areaId).concat(area ? [area] : []);
 }
 
 /** The heading for a rep: the patient, or the topic when a rep isn't a person (syllabus drills) */

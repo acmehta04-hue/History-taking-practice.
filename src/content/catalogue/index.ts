@@ -3,6 +3,7 @@ import type { SyllabusCondition, SyllabusPresentation, TestDef, Weight } from '.
 import { areas } from './areas';
 import { CONDITIONS_MEDICINE } from './conditions-medicine';
 import { CONDITIONS_SPECIALTIES } from './conditions-specialties';
+import { DRUGS_TABLE } from './drugs';
 import { PRESENTATIONS_TABLE } from './presentations';
 import { TESTS_TABLE } from './tests';
 
@@ -170,6 +171,24 @@ export function inSentence(title: string): string {
   return title[0].toLowerCase() + title.slice(1);
 }
 
+/* ------------------------------------------------------------------ */
+/* Drugs to know                                                        */
+/* ------------------------------------------------------------------ */
+
+export interface CatalogueDrug {
+  id: string;
+  name: string;
+  drugClass: string;
+  areaId: string;
+}
+
+export const drugCatalogue: CatalogueDrug[] = rows(DRUGS_TABLE, 'drugs', 4).map(([id, name, drugClass, areaId]) => ({
+  id,
+  name,
+  drugClass,
+  areaId,
+}));
+
 /** Totals for the syllabus screen */
 export function catalogueStats() {
   return {
@@ -177,5 +196,6 @@ export function catalogueStats() {
     presentations: syllabusPresentations.length,
     conditions: conditions.filter((c) => !c.helper).length,
     tests: tests.length,
+    drugs: drugCatalogue.length,
   };
 }
